@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+.build/
+Flock.app/
+flock-app
+
+# macOS
+.DS_Store
+
+# Icon build artifacts
+icon.iconset/

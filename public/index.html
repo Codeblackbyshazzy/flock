@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flock</title>
+  <link rel="stylesheet" href="/vendor/xterm.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="titlebar">
+      <div class="titlebar-left">
+        <div class="brand">
+          <span class="brand-icon">&#x25A0;&#x25A0;&#x25A0;&#x25A0;</span>
+          <span class="brand-name">flock</span>
+        </div>
+        <div class="session-count" id="session-count">
+          <span class="count-dot"></span>
+          <span class="count-num">0</span>
+          <span class="count-label">sessions</span>
+        </div>
+      </div>
+      <div class="titlebar-center"></div>
+      <div class="titlebar-right">
+        <button class="btn btn-primary" id="btn-claude" title="⌘T">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Claude</span>
+        </button>
+        <button class="btn btn-ghost" id="btn-shell" title="⌘⇧T">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 4l3 2.5L2 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          <span>Shell</span>
+        </button>
+      </div>
+    </header>
+    <main id="grid"></main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
