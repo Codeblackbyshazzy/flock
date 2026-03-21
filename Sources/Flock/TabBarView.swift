@@ -288,15 +288,15 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 withAttributes: attrs
             )
 
-            // Activity dot — show if any leaf in this node has unread activity
+            // Agent active dot — red circle when any Claude pane in this tab is working
             let leaves = node.allLeaves
-            let hasActivity = !active && leaves.contains(where: { $0.hasUnreadActivity }) && Settings.shared.showActivityIndicators
-            if hasActivity {
+            let agentWorking = leaves.contains(where: { $0.isAgentActive }) && Settings.shared.showActivityIndicators
+            if agentWorking {
                 let dotSize: CGFloat = 6
                 let dotX = rect.origin.x + tabPadL + sz.width + 6
                 let dotY = rect.midY - dotSize / 2
                 let dotRect = CGRect(x: dotX, y: dotY, width: dotSize, height: dotSize)
-                NSColor(hex: 0x007AFF).withAlphaComponent(0.7).setFill()
+                NSColor(hex: 0xFF3B30).withAlphaComponent(0.85).setFill()
                 NSBezierPath(ovalIn: dotRect).fill()
             }
 

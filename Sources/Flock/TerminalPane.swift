@@ -10,8 +10,13 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     private let clipView = NSView(frame: .zero)
     private let ambientShadowLayer = CALayer()
 
-    // Activity detection
-    var hasUnreadActivity: Bool = false
+    // Agent activity detection (Claude panes only)
+    private(set) var isAgentActive: Bool = false
+    private var agentActivityTimer: Timer?
+    private let agentIdleTimeout: TimeInterval = 2.5
+    private var recentByteCount: Int = 0
+    private var byteWindowTimer: Timer?
+    private let byteRateThreshold: Int = 150  // bytes per second to count as "active"
 
     // Process title tracking
     var processTitle: String?
@@ -39,10 +44,6 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     var isFocused: Bool = false {
         didSet {
             animateAppearance()
-            if isFocused {
-                hasUnreadActivity = false
-                manager?.tabBar?.update()
-            }
         }
     }
 
@@ -196,13 +197,35 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         }
     }
 
-    // MARK: - Activity detection
+    // MARK: - Agent activity detection
 
-    func didReceiveOutput() {
-        if !isFocused && Settings.shared.showActivityIndicators {
-            if !hasUnreadActivity {
-                hasUnreadActivity = true
-                manager?.tabBar?.update()
+    func didReceiveOutput(byteCount: Int) {
+        guard type == .claude && Settings.shared.showActivityIndicators else { return }
+
+        // Accumulate bytes in a rolling 1-second window
+        recentByteCount += byteCount
+
+        if byteWindowTimer == nil {
+            byteWindowTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: false) { [weak self] _ in
+                guard let self else { return }
+                let bytes = self.recentByteCount
+                self.recentByteCount = 0
+                self.byteWindowTimer = nil
+
+                if bytes >= self.byteRateThreshold {
+                    // Enough output to count as active
+                    if !self.isAgentActive {
+                        self.isAgentActive = true
+                        self.manager?.tabBar?.update()
+                    }
+                    // Reset idle timer
+                    self.agentActivityTimer?.invalidate()
+                    self.agentActivityTimer = Timer.scheduledTimer(withTimeInterval: self.agentIdleTimeout, repeats: false) { [weak self] _ in
+                        guard let self, self.isAgentActive else { return }
+                        self.isAgentActive = false
+                        self.manager?.tabBar?.update()
+                    }
+                }
             }
         }
     }

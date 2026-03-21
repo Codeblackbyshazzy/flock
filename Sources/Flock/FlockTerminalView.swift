@@ -7,8 +7,9 @@ class FlockTerminalView: LocalProcessTerminalView {
     // Detect output for activity dots
     override func dataReceived(slice: ArraySlice<UInt8>) {
         super.dataReceived(slice: slice)
+        let count = slice.count
         DispatchQueue.main.async { [weak self] in
-            self?.owningPane?.didReceiveOutput()
+            self?.owningPane?.didReceiveOutput(byteCount: count)
         }
     }
 

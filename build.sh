@@ -15,7 +15,8 @@ cp .build/release/Flock "$APP/Contents/MacOS/Flock"
 # Re-sign (ad-hoc) so macOS doesn't complain
 codesign --force --sign - "$APP" 2>/dev/null || true
 
-# Install to /Applications
+# Install to /Applications (rm first — cp -R can't overwrite a running app)
+rm -rf /Applications/Flock.app
 cp -R "$APP" /Applications/Flock.app
 
 # Also keep CLI symlink

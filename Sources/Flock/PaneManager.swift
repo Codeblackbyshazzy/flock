@@ -45,28 +45,38 @@ class PaneManager {
     func closePane(at index: Int) {
         guard index >= 0, index < panes.count else { return }
         closeFindBar()
-        let pane = panes.remove(at: index)
+        let pane = panes[index]
+
+        // Update tabNodes: remove the pane from its split tree or remove the whole tab
+        if let tabIdx = tabNodes.firstIndex(where: { $0.findLeaf(containing: pane) != nil }) {
+            if tabNodes[tabIdx].leafCount <= 1 {
+                // Only leaf in this tab — remove the entire tab node
+                tabNodes.remove(at: tabIdx)
+            } else {
+                // Part of a split — remove pane and promote sibling
+                _ = tabNodes[tabIdx].removePaneAndPromoteSibling(pane: pane)
+            }
+        }
+
+        // Rebuild flat panes array from the updated tree
+        rebuildPanesFromNodes()
 
         if panes.isEmpty {
             activePaneIndex = -1
-        } else if index <= activePaneIndex {
-            activePaneIndex = max(0, activePaneIndex - 1)
+        } else {
+            activePaneIndex = min(max(0, index <= activePaneIndex ? activePaneIndex - 1 : activePaneIndex), panes.count - 1)
             panes[activePaneIndex].isFocused = true
             panes[activePaneIndex].terminalView.window?.makeFirstResponder(panes[activePaneIndex].terminalView)
         }
         isMaximized = false
 
         // Animate exit, then remove + reflow
-        pane.animateExit { [weak self] in
-            pane.shutdown()
-            pane.removeFromSuperview()
-            self?.layoutAndUpdate(animated: true)
+        pane.animateExit { [weak pane] in
+            pane?.shutdown()
+            pane?.removeFromSuperview()
         }
 
-        // Immediately reflow remaining panes
-        tabBar?.update()
-        statusBar?.update()
-        gridContainer?.layoutPanes(animated: true)
+        layoutAndUpdate(animated: true)
     }
 
     func closeActivePane() {
