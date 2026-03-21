@@ -277,29 +277,23 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 bgPath.fill()
             }
 
-            // Label
+            // Label — color the ✱ star red when agent is active
             let label = tabLabel(for: i, node: node)
-            let textColor = active ? Theme.textPrimary : Theme.textSecondary
-            let font = active ? Theme.Typo.tabActive : Theme.Typo.tabRest
-            let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: textColor]
-            let sz = label.size(withAttributes: attrs)
-            label.draw(
-                at: NSPoint(x: rect.origin.x + tabPadL, y: rect.midY - sz.height / 2),
-                withAttributes: attrs
-            )
-
-            // Agent active dot — red circle when any Claude pane in this tab is working
             let leaves = node.allLeaves
             let agentWorking = leaves.contains(where: { $0.isAgentActive }) && Settings.shared.showActivityIndicators
-            if agentWorking {
-                let dotSize: CGFloat = 6
-                let dotX = rect.origin.x + tabPadL + sz.width + 6
-                let dotY = rect.midY - dotSize / 2
-                let dotRect = CGRect(x: dotX, y: dotY, width: dotSize, height: dotSize)
-                NSColor(hex: 0xFF3B30).withAlphaComponent(0.85).setFill()
-                NSBezierPath(ovalIn: dotRect).fill()
-            }
+            let textColor = active ? Theme.textPrimary : Theme.textSecondary
+            let font = active ? Theme.Typo.tabActive : Theme.Typo.tabRest
+            let starChar: Character = "\u{2731}" // ✱
+            let origin = NSPoint(x: rect.origin.x + tabPadL, y: rect.midY - label.size(withAttributes: [.font: font]).height / 2)
 
+            if agentWorking, let starRange = label.range(of: String(starChar)) {
+                let attrStr = NSMutableAttributedString(string: label, attributes: [.font: font, .foregroundColor: textColor])
+                let nsRange = NSRange(starRange, in: label)
+                attrStr.addAttribute(.foregroundColor, value: NSColor(hex: 0xFF3B30), range: nsRange)
+                attrStr.draw(at: origin)
+            } else {
+                label.draw(at: origin, withAttributes: [.font: font, .foregroundColor: textColor])
+            }
             // Accent color dot — show first leaf's accent
             if let accent = leaves.first?.accentColor {
                 let adotSize: CGFloat = 6
