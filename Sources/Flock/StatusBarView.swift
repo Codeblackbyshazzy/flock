@@ -3,7 +3,6 @@ import AppKit
 class StatusBarView: NSView {
     weak var paneManager: PaneManager?
     private let label = NSTextField(labelWithString: "")
-    private let costLabel = NSTextField(labelWithString: "")
     private let durationLabel = NSTextField(labelWithString: "")
     private let broadcastBadge = NSTextField(labelWithString: "")
     private var lastText: String = ""
@@ -21,11 +20,6 @@ class StatusBarView: NSView {
         label.font = Theme.Typo.status
         label.textColor = Theme.textTertiary
         addSubview(label)
-
-        costLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        costLabel.textColor = Theme.textTertiary
-        costLabel.isHidden = true
-        addSubview(costLabel)
 
         durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         durationLabel.textColor = Theme.textTertiary
@@ -47,37 +41,13 @@ class StatusBarView: NSView {
 
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
                                                name: Theme.themeDidChange, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(costDidUpdate),
-                                               name: CostTracker.costDidUpdate, object: nil)
     }
 
     @objc private func themeChanged() {
         layer?.backgroundColor = Theme.chrome.cgColor
         label.textColor = Theme.textTertiary
-        costLabel.textColor = Theme.textTertiary
         durationLabel.textColor = Theme.textTertiary
         needsDisplay = true
-    }
-
-    @objc private func costDidUpdate() {
-        updateCost()
-    }
-
-    private func updateCost() {
-        let total = CostTracker.shared.totalCost
-        if total > 0 {
-            costLabel.stringValue = formatCost(total)
-            costLabel.isHidden = false
-        } else {
-            costLabel.stringValue = ""
-            costLabel.isHidden = true
-        }
-    }
-
-    private func formatCost(_ cost: Double) -> String {
-        if cost < 0.01 { return String(format: "$%.4f", cost) }
-        if cost < 10 { return String(format: "$%.2f", cost) }
-        return String(format: "$%.2f", cost)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -106,7 +76,6 @@ class StatusBarView: NSView {
         // Broadcast badge
         broadcastBadge.isHidden = !(mgr.isBroadcasting)
 
-        updateCost()
         updateDuration()
         needsDisplay = true
     }
@@ -141,8 +110,6 @@ class StatusBarView: NSView {
         broadcastBadge.frame = NSRect(x: pad, y: 6, width: 70, height: 16)
         let labelX = (paneManager?.isBroadcasting == true) ? pad + 76 : pad
         label.frame = NSRect(x: labelX, y: 6, width: 200, height: 16)
-        let costW: CGFloat = 80
-        costLabel.frame = NSRect(x: labelX + 200 + pad, y: 6, width: costW, height: 16)
         durationLabel.frame = NSRect(x: bounds.width - 200 - pad, y: 6, width: 200, height: 16)
     }
 

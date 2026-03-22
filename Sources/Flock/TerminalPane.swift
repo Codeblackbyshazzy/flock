@@ -317,14 +317,8 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         terminalView.installColors(colors)
     }
 
-    var sessionCost: Double { CostTracker.shared.cost(for: self) }
-
     func sendText(_ text: String) { terminalView.send(txt: text) }
-
-    func shutdown() {
-        CostTracker.shared.resetCost(for: self)
-        terminalView.terminate()
-    }
+    func shutdown() { terminalView.terminate() }
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         clipView.frame = bounds

@@ -11,6 +11,3 @@ flock-app
 
 # Icon build artifacts
 icon.iconset/
-
-# Release artifacts
-*.zip

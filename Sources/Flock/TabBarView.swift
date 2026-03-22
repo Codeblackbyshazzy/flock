@@ -45,18 +45,6 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
                                                name: Theme.themeDidChange, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(costDidUpdate),
-                                               name: CostTracker.costDidUpdate, object: nil)
-    }
-
-    @objc private func costDidUpdate() {
-        update()
-    }
-
-    private func formatCost(_ cost: Double) -> String {
-        if cost < 0.01 { return String(format: "$%.4f", cost) }
-        if cost < 10 { return String(format: "$%.2f", cost) }
-        return String(format: "$%.2f", cost)
     }
 
     @objc private func themeChanged() {
@@ -174,18 +162,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         let pane = activePaneInNode ?? leaves.first
         let name = pane?.customName ?? pane?.processTitle ?? pane?.type.label ?? "pane"
         let suffix = node.leafCount > 1 ? " (\(node.leafCount))" : ""
-        let costSuffix = tabCostSuffix(for: node)
-        return "\(index + 1)  \(name)\(suffix)\(costSuffix)"
-    }
-
-    /// Returns " · $X.XX" cost suffix for Claude panes with non-zero cost, empty string otherwise.
-    private func tabCostSuffix(for node: SplitNode) -> String {
-        let leaves = node.allLeaves
-        // Only show cost for tabs that contain Claude panes
-        guard leaves.contains(where: { $0.type == .claude }) else { return "" }
-        let cost = leaves.reduce(0.0) { $0 + CostTracker.shared.cost(for: $1) }
-        guard cost > 0 else { return "" }
-        return " \u{00B7} \(formatCost(cost))"
+        return "\(index + 1)  \(name)\(suffix)"
     }
 
     // MARK: - Geometry
@@ -300,9 +277,8 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 bgPath.fill()
             }
 
-            // Label — color the ✱ star red when agent is active, cost suffix tertiary
+            // Label — color the ✱ star red when agent is active
             let label = tabLabel(for: i, node: node)
-            let costSuffix = tabCostSuffix(for: node)
             let leaves = node.allLeaves
             let agentWorking = leaves.contains(where: { $0.isAgentActive }) && Settings.shared.showActivityIndicators
             let textColor = active ? Theme.textPrimary : Theme.textSecondary
@@ -310,17 +286,10 @@ class TabBarView: NSView, NSTextFieldDelegate {
             let starChar: Character = "\u{2731}" // ✱
             let origin = NSPoint(x: rect.origin.x + tabPadL, y: rect.midY - label.size(withAttributes: [.font: font]).height / 2)
 
-            let needsAttrStr = agentWorking && label.contains(starChar) || !costSuffix.isEmpty
-            if needsAttrStr {
+            if agentWorking, let starRange = label.range(of: String(starChar)) {
                 let attrStr = NSMutableAttributedString(string: label, attributes: [.font: font, .foregroundColor: textColor])
-                if agentWorking, let starRange = label.range(of: String(starChar)) {
-                    let nsRange = NSRange(starRange, in: label)
-                    attrStr.addAttribute(.foregroundColor, value: NSColor(hex: 0xFF3B30), range: nsRange)
-                }
-                if !costSuffix.isEmpty, let costRange = label.range(of: costSuffix, options: .backwards) {
-                    let nsRange = NSRange(costRange, in: label)
-                    attrStr.addAttribute(.foregroundColor, value: Theme.textTertiary, range: nsRange)
-                }
+                let nsRange = NSRange(starRange, in: label)
+                attrStr.addAttribute(.foregroundColor, value: NSColor(hex: 0xFF3B30), range: nsRange)
                 attrStr.draw(at: origin)
             } else {
                 label.draw(at: origin, withAttributes: [.font: font, .foregroundColor: textColor])

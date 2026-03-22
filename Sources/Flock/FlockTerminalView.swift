@@ -4,16 +4,12 @@ import SwiftTerm
 class FlockTerminalView: LocalProcessTerminalView {
     weak var owningPane: TerminalPane?
 
-    // Detect output for activity dots + cost tracking
+    // Detect output for activity dots
     override func dataReceived(slice: ArraySlice<UInt8>) {
         super.dataReceived(slice: slice)
         let count = slice.count
         DispatchQueue.main.async { [weak self] in
-            guard let self, let pane = self.owningPane else { return }
-            pane.didReceiveOutput(byteCount: count)
-            if pane.type == .claude {
-                CostTracker.shared.processOutput(slice, for: pane)
-            }
+            self?.owningPane?.didReceiveOutput(byteCount: count)
         }
     }
 

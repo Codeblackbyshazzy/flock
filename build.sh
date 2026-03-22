@@ -6,17 +6,14 @@ cd "$(dirname "$0")"
 echo "Building Flock..."
 swift build -c release 2>&1
 
-# Assemble .app bundle
+# Update .app bundle
 APP="Flock.app"
-rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 cp .build/release/Flock "$APP/Contents/MacOS/Flock"
-cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
-cp Info.plist "$APP/Contents/Info.plist"
 
 # Re-sign (ad-hoc) so macOS doesn't complain
-codesign --force --sign - --deep "$APP"
+codesign --force --sign - "$APP" 2>/dev/null || true
 
 # Install to /Applications (rm first — cp -R can't overwrite a running app)
 rm -rf /Applications/Flock.app
