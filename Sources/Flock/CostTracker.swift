@@ -11,12 +11,8 @@ class CostTracker {
     private static let ansiCSI = try! NSRegularExpression(pattern: "\\x1b\\[[0-9;]*[a-zA-Z]")
     private static let ansiOSC = try! NSRegularExpression(pattern: "\\x1b\\][^\\x07]*\\x07")
 
-    // Cost patterns — require "cost" context to avoid matching random dollar amounts
-    // Matches: "cost: $1.23", "$1.23 cost", "Total cost: $0.08", "cost $1.23"
-    private static let costPatterns: [NSRegularExpression] = [
-        try! NSRegularExpression(pattern: "cost[:\\s]+\\$([0-9]+\\.[0-9]+)", options: .caseInsensitive),
-        try! NSRegularExpression(pattern: "\\$([0-9]+\\.[0-9]+)\\s*cost", options: .caseInsensitive),
-    ]
+    // Dollar amount pattern: $0.08, $1.23, $12.3456, $0.1234
+    private static let dollarPattern = try! NSRegularExpression(pattern: "\\$([0-9]+\\.?[0-9]*)")
 
     private init() {}
 
@@ -62,21 +58,19 @@ class CostTracker {
         let cleanRange = NSRange(location: 0, length: nsClean.length)
         cleaned = CostTracker.ansiOSC.stringByReplacingMatches(in: cleaned, range: cleanRange, withTemplate: "")
 
-        // Find dollar amounts that appear near "cost" keyword
+        // Find all dollar amounts and return the highest in this line
         let nsFinal = cleaned as NSString
         let finalRange = NSRange(location: 0, length: nsFinal.length)
+        let matches = CostTracker.dollarPattern.matches(in: cleaned, range: finalRange)
 
         var highest: Double?
-        for pattern in CostTracker.costPatterns {
-            let matches = pattern.matches(in: cleaned, range: finalRange)
-            for match in matches {
-                guard match.numberOfRanges >= 2 else { continue }
-                let valueRange = match.range(at: 1)
-                let valueStr = nsFinal.substring(with: valueRange)
-                if let value = Double(valueStr), value > 0 {
-                    if highest == nil || value > highest! {
-                        highest = value
-                    }
+        for match in matches {
+            guard match.numberOfRanges >= 2 else { continue }
+            let valueRange = match.range(at: 1)
+            let valueStr = nsFinal.substring(with: valueRange)
+            if let value = Double(valueStr), value > 0 {
+                if highest == nil || value > highest! {
+                    highest = value
                 }
             }
         }
