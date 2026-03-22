@@ -13,6 +13,7 @@ mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 cp .build/release/Flock "$APP/Contents/MacOS/Flock"
 cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+cp Resources/zsh-autosuggestions.zsh "$APP/Contents/Resources/zsh-autosuggestions.zsh"
 cp Info.plist "$APP/Contents/Info.plist"
 
 # Re-sign (ad-hoc) so macOS doesn't complain

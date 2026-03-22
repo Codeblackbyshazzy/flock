@@ -24,6 +24,9 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     // Current working directory (for session restore + title bar)
     var currentDirectory: String?
 
+    // Temp ZDOTDIR for shell enhancements (cleaned up on shutdown)
+    private var zdotdir: String?
+
     // Accent color (optional per-pane coloring)
     var accentColor: NSColor? {
         didSet { updateAccentBar() }
@@ -125,16 +128,16 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         terminalView.processDelegate = self
         clipView.addSubview(terminalView)
 
-        // Start shell
+        // Start shell with enhancements (autosuggestions)
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let name = (shell as NSString).lastPathComponent
-        terminalView.startProcess(executable: shell, execName: "-\(name)")
+        let cwd = workingDirectory ?? ProcessInfo.processInfo.environment["HOME"]
 
-        // Navigate to working directory if provided
-        if let dir = workingDirectory {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                self?.sendText("cd \(dir)\n")
-            }
+        if let enhanced = ShellEnhancer.enhancedEnvironment(workingDirectory: workingDirectory) {
+            self.zdotdir = enhanced.zdotdir
+            terminalView.startProcess(executable: shell, environment: enhanced.env, execName: "-\(name)", currentDirectory: cwd)
+        } else {
+            terminalView.startProcess(executable: shell, execName: "-\(name)", currentDirectory: cwd)
         }
 
         if type == .claude {
@@ -318,7 +321,11 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     }
 
     func sendText(_ text: String) { terminalView.send(txt: text) }
-    func shutdown() { terminalView.terminate() }
+
+    func shutdown() {
+        if let dir = zdotdir { ShellEnhancer.cleanup(zdotdir: dir) }
+        terminalView.terminate()
+    }
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         clipView.frame = bounds
