@@ -5,6 +5,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     let terminalView: FlockTerminalView
     let type: PaneType
     var customName: String?
+    var shouldResume: Bool = false
     weak var manager: PaneManager?
 
     private let clipView = NSView(frame: .zero)
@@ -18,6 +19,10 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     private var recentByteCount: Int = 0
     private var byteWindowTimer: Timer?
     private let byteRateThreshold: Int = 150  // bytes per second to count as "active"
+
+    // Agent state parsing (Claude panes only)
+    let outputParser = ClaudeOutputParser()
+    private(set) var agentState: AgentState = .idle
 
     // Process title tracking
     var processTitle: String?
@@ -126,6 +131,32 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
         updateTitleBar()
 
+        // Agent state parser (Claude panes only)
+        if type == .claude {
+            outputParser.onStateChange = { [weak self] state in
+                guard let self else { return }
+                let oldState = self.agentState
+                self.agentState = state
+                self.updateTitleBar()
+                self.manager?.tabBar?.update()
+                self.manager?.statusBar?.update()
+
+                // Notify on important state changes in unfocused panes
+                if !self.isFocused {
+                    let paneName = self.customName ?? self.processTitle ?? self.type.label
+                    let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
+                    if state == .waiting && oldState != .waiting {
+                        FlockNotifications.sendAgentStateChange(
+                            paneName: paneName, paneIndex: paneIdx, state: "Waiting for your input")
+                        SoundEffects.playChime()
+                    } else if state == .error && oldState != .error {
+                        FlockNotifications.sendAgentStateChange(
+                            paneName: paneName, paneIndex: paneIdx, state: "Error detected")
+                    }
+                }
+            }
+        }
+
         // Terminal
         let fontSize = Settings.shared.fontSize
         terminalView.nativeBackgroundColor = Theme.terminalBg
@@ -149,7 +180,8 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
         if type == .claude {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.sendText("claude\n")
+                guard let self else { return }
+                self.sendText(self.shouldResume ? "claude --resume\n" : "claude\n")
             }
         }
 
@@ -199,7 +231,11 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     // MARK: - Title bar
 
     private func updateTitleBar() {
-        titleProcessLabel.stringValue = processTitle ?? type.label
+        let stateLabel = (type == .claude && agentState != .idle) ? agentState.label : nil
+        titleProcessLabel.stringValue = stateLabel ?? processTitle ?? type.label
+        titleProcessLabel.textColor = (agentState == .waiting) ? Theme.accent
+            : (agentState == .error) ? NSColor(hex: 0xFF3B30)
+            : Theme.textSecondary
         if let dir = currentDirectory {
             let home = FileManager.default.homeDirectoryForCurrentUser.path
             titleCwdLabel.stringValue = dir.hasPrefix(home) ? "~" + dir.dropFirst(home.count) : dir
@@ -402,10 +438,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
     private func sendCommandNotification() {
         let paneName = customName ?? processTitle ?? type.label
-        let script = "display notification \"\(paneName) — Command completed\" with title \"Flock\""
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        proc.arguments = ["-e", script]
-        try? proc.run()
+        let paneIdx = manager?.panes.firstIndex(where: { $0 === self }) ?? 0
+        FlockNotifications.sendCompletion(paneName: paneName, paneIndex: paneIdx, duration: lastCommandDuration)
     }
 }

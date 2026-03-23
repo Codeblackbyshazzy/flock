@@ -28,6 +28,9 @@ class PaneManager {
     // Find bar
     private var findBar: FindBarView?
 
+    // Global find
+    private let globalFind = GlobalFindView()
+
     // Broadcast mode
     private(set) var isBroadcasting: Bool = false
 
@@ -259,7 +262,8 @@ class PaneManager {
         let sessionPanes = panes.map { pane in
             (type: pane.type == .claude ? "claude" : "shell",
              directory: pane.currentDirectory,
-             name: pane.customName)
+             name: pane.customName,
+             sessionId: pane.type == .claude ? "resume" : nil)
         }
         SessionRestore.save(panes: sessionPanes, activeIndex: activePaneIndex)
     }
@@ -270,6 +274,9 @@ class PaneManager {
             let type: PaneType = sp.type == "shell" ? .shell : .claude
             let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
             pane.customName = sp.customName
+            if type == .claude, sp.sessionId != nil {
+                pane.shouldResume = true
+            }
             panes.append(pane)
             tabNodes.append(SplitNode(pane: pane))
             gridContainer?.addSubview(pane)
@@ -348,6 +355,14 @@ class PaneManager {
 
     func findPrevious() {
         findBar?.findPrevious(nil)
+    }
+
+    // MARK: - Global Find
+
+    func showGlobalFind() {
+        guard let window = gridContainer?.window else { return }
+        closeFindBar()
+        globalFind.show(in: window, paneManager: self)
     }
 
     // MARK: - Navigation

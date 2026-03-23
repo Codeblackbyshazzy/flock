@@ -4,12 +4,16 @@ import SwiftTerm
 class FlockTerminalView: LocalProcessTerminalView {
     weak var owningPane: TerminalPane?
 
-    // Detect output for activity dots
+    // Detect output for activity dots + agent state parsing
     override func dataReceived(slice: ArraySlice<UInt8>) {
         super.dataReceived(slice: slice)
         let count = slice.count
+        let text = String(bytes: slice, encoding: .utf8)
         DispatchQueue.main.async { [weak self] in
             self?.owningPane?.didReceiveOutput(byteCount: count)
+            if let text, let pane = self?.owningPane, pane.type == .claude {
+                pane.outputParser.feed(text)
+            }
         }
     }
 

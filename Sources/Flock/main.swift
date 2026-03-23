@@ -9,6 +9,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hotkeyManager: GlobalHotkeyManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Notifications
+        FlockNotifications.setup()
+        FlockNotifications.requestPermission()
+
         // Load saved theme
         let savedId = Settings.shared.themeId
         if let theme = Themes.all.first(where: { $0.id == savedId }) {
@@ -46,6 +50,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             self?.paneManager.handleClick(event: event)
             return event
+        }
+
+        // Handle notification tap -> focus pane
+        NotificationCenter.default.addObserver(forName: FlockNotifications.focusPaneRequested,
+                                               object: nil, queue: .main) { [weak self] note in
+            if let idx = note.userInfo?["paneIndex"] as? Int {
+                self?.paneManager.focusPane(at: idx)
+                self?.mainWindow.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
     }
 
@@ -96,6 +110,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func toggleBroadcast(_ sender: Any?) {
         paneManager.toggleBroadcast()
+    }
+
+    @objc func showGlobalFind(_ sender: Any?) {
+        paneManager.showGlobalFind()
     }
 
     @objc func toggleAgentMode(_ sender: Any?) {
@@ -150,6 +168,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
             key: "g", target: target)
     addItem(editMenu, "Find Previous", #selector(AppDelegate.findPreviousInTerminal(_:)),
             key: "g", mods: [.command, .shift], target: target)
+    addItem(editMenu, "Find in All Panes", #selector(AppDelegate.showGlobalFind(_:)),
+            key: "f", mods: [.command, .shift], target: target)
 
     // -- View menu --
     let viewItem = NSMenuItem(); main.addItem(viewItem)

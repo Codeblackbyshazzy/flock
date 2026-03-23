@@ -63,12 +63,11 @@ flock is keyboard-first. your hands never leave the keys.
 
 ## build it yourself
 
-you'll need xcode (swift 5.9+) and node.
+you'll need xcode (swift 5.9+).
 
 ```bash
 git clone https://github.com/Divagation/flock.git
 cd flock
-npm install
 ./build.sh
 ```
 

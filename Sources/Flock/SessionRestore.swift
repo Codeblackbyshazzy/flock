@@ -4,6 +4,7 @@ struct SessionPane: Codable {
     let type: String        // "claude" or "shell"
     let workingDirectory: String?
     let customName: String?
+    let sessionId: String?
 }
 
 struct SessionLayout: Codable {
@@ -19,9 +20,9 @@ enum SessionRestore {
         return dir.appendingPathComponent("session.json")
     }
 
-    static func save(panes: [(type: String, directory: String?, name: String?)], activeIndex: Int) {
+    static func save(panes: [(type: String, directory: String?, name: String?, sessionId: String?)], activeIndex: Int) {
         let layout = SessionLayout(
-            panes: panes.map { SessionPane(type: $0.type, workingDirectory: $0.directory, customName: $0.name) },
+            panes: panes.map { SessionPane(type: $0.type, workingDirectory: $0.directory, customName: $0.name, sessionId: $0.sessionId) },
             activeIndex: activeIndex
         )
         if let data = try? JSONEncoder().encode(layout) {

@@ -148,6 +148,9 @@ class CommandPalette {
             CommandAction(name: "Toggle Broadcast", shortcut: "⌘⇧B", category: "View") { [weak self] in
                 self?.paneManager?.toggleBroadcast()
             },
+            CommandAction(name: "Find in All Panes", shortcut: "⌘⇧F", category: "View") { [weak self] in
+                self?.paneManager?.showGlobalFind()
+            },
             CommandAction(name: "Toggle Agent Mode", shortcut: "⌘⇧A", category: "View") { [weak self] in
                 self?.paneManager?.toggleAgentMode()
             },
@@ -252,7 +255,7 @@ private struct FuzzyMatch {
 
 // MARK: - Backdrop View
 
-private class CommandBackdropView: NSView {
+class CommandBackdropView: NSView {
     var onClickOutside: (() -> Void)?
 
     override var isFlipped: Bool { true }
