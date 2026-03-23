@@ -274,7 +274,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
     private func updateCompressionGauge(_ stats: CompressionStats) {
         let pct = stats.percentSaved
-        if pct > 0 && stats.rawBytes > 500 {
+        if compressor.isReady && pct > 0 && stats.rawBytes > 500 {
             compressionGaugeLabel.isHidden = false
             compressionGaugeLabel.stringValue = "\u{25C9} \(pct)%"
             // Color ramp: low=subtle, high=green

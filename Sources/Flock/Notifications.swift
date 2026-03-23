@@ -1,73 +1,23 @@
 import Foundation
-import UserNotifications
 
 enum FlockNotifications {
     static let focusPaneRequested = Notification.Name("FlockFocusPaneRequested")
 
-    /// True when running inside a .app bundle (UNUserNotificationCenter requires this)
-    private static var isAvailable: Bool {
-        guard let id = Bundle.main.bundleIdentifier, !id.isEmpty else { return false }
-        return Bundle.main.bundlePath.hasSuffix(".app")
-    }
-
     static func requestPermission() {
-        guard isAvailable else { return }
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in }
+        // no-op: ad-hoc signed apps can't use UNUserNotificationCenter
     }
 
     static func setup() {
-        guard isAvailable else { return }
-        let viewAction = UNNotificationAction(identifier: "VIEW", title: "View Pane", options: .foreground)
-
-        let completionCategory = UNNotificationCategory(
-            identifier: "PANE_COMPLETION",
-            actions: [viewAction],
-            intentIdentifiers: [],
-            options: []
-        )
-
-        let agentStateCategory = UNNotificationCategory(
-            identifier: "AGENT_STATE",
-            actions: [viewAction],
-            intentIdentifiers: [],
-            options: []
-        )
-
-        let center = UNUserNotificationCenter.current()
-        center.setNotificationCategories([completionCategory, agentStateCategory])
-        center.delegate = FlockNotificationDelegate.shared
+        // no-op: ad-hoc signed apps can't use UNUserNotificationCenter
     }
 
     static func sendCompletion(paneName: String, paneIndex: Int, duration: TimeInterval?) {
         let body = formatDuration(duration)
-        if isAvailable {
-            let content = UNMutableNotificationContent()
-            content.title = "Flock"
-            content.subtitle = paneName
-            content.body = body
-            content.sound = .default
-            content.categoryIdentifier = "PANE_COMPLETION"
-            content.userInfo = ["paneIndex": paneIndex]
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(request)
-        } else {
-            sendOsascript(title: "Flock", message: "\(paneName) — \(body)")
-        }
+        sendOsascript(title: "Flock", message: "\(paneName) — \(body)")
     }
 
     static func sendAgentStateChange(paneName: String, paneIndex: Int, state: String) {
-        if isAvailable {
-            let content = UNMutableNotificationContent()
-            content.title = "Flock — \(paneName)"
-            content.body = state
-            content.sound = .default
-            content.categoryIdentifier = "AGENT_STATE"
-            content.userInfo = ["paneIndex": paneIndex]
-            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-            UNUserNotificationCenter.current().add(request)
-        } else {
-            sendOsascript(title: "Flock", message: "\(paneName) — \(state)")
-        }
+        sendOsascript(title: "Flock", message: "\(paneName) — \(state)")
     }
 
     private static func sendOsascript(title: String, message: String) {
@@ -91,41 +41,5 @@ enum FlockNotifications {
             return "Completed in \(minutes)m"
         }
         return "Completed in \(minutes)m \(remainder)s"
-    }
-}
-
-class FlockNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    static let shared = FlockNotificationDelegate()
-
-    private override init() {
-        super.init()
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        if response.actionIdentifier == "VIEW" || response.actionIdentifier == UNNotificationDefaultActionIdentifier {
-            let userInfo = response.notification.request.content.userInfo
-            if let paneIndex = userInfo["paneIndex"] as? Int {
-                DispatchQueue.main.async {
-                    NotificationCenter.default.post(
-                        name: FlockNotifications.focusPaneRequested,
-                        object: nil,
-                        userInfo: ["paneIndex": paneIndex]
-                    )
-                }
-            }
-        }
-        completionHandler()
-    }
-
-    func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([])
     }
 }

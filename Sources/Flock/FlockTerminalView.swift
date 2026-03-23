@@ -22,6 +22,8 @@ class FlockTerminalView: LocalProcessTerminalView {
     // Broadcast input: when typing in one pane, send to all others
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
         super.send(source: source, data: data)
+        // First user keystroke arms the compressor
+        owningPane?.compressor.markReady()
         guard let manager = owningPane?.manager, manager.isBroadcasting else { return }
         for pane in manager.panes where pane !== owningPane {
             pane.terminalView.process.send(data: data)

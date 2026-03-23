@@ -83,6 +83,14 @@ final class PTYStreamCompressor {
     private(set) var stats = CompressionStats()
     private(set) var foldedChunks: [FoldedChunk] = []
 
+    /// Only start counting compression after user sends first keystroke.
+    /// Shell startup ANSI noise is not meaningful compression.
+    private(set) var isReady = false
+
+    func markReady() {
+        isReady = true
+    }
+
     var onStatsUpdate: ((CompressionStats) -> Void)?
 
     // Buffering for command output detection
@@ -185,6 +193,7 @@ final class PTYStreamCompressor {
 
     /// Analyze a chunk of PTY output data. Call this for every `dataReceived` event.
     func feed(_ data: ArraySlice<UInt8>) {
+        guard isReady else { return }
         let byteCount = data.count
         stats.rawBytes += byteCount
 
@@ -201,6 +210,7 @@ final class PTYStreamCompressor {
 
     /// Analyze a text string (convenience for when text is already decoded).
     func feedText(_ text: String) {
+        guard isReady else { return }
         let byteCount = text.utf8.count
         stats.rawBytes += byteCount
         analyzeText(text, byteCount: byteCount)
@@ -213,6 +223,7 @@ final class PTYStreamCompressor {
         lineBuffer.removeAll()
         currentLine = ""
         outputStartTime = nil
+        isReady = false
         isInProgressBar = false
         progressBarByteAccum = 0
         chunkIdCounter = 0
