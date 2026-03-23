@@ -40,21 +40,35 @@ class CompressionStatsPanel: NSView {
         view.refreshStats()
         view.startRefreshTimer()
 
-        window.beginSheet(panel)
+        window.beginSheet(panel) { _ in
+            view.cleanup()
+        }
     }
 
     // MARK: - Init
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        wantsLayer = true
-        layer?.backgroundColor = Theme.chrome.cgColor
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
     deinit {
         refreshTimer?.invalidate()
+    }
+
+    // MARK: - Cleanup
+
+    private func cleanup() {
+        refreshTimer?.invalidate()
+        refreshTimer = nil
+    }
+
+    func dismiss() {
+        cleanup()
+        if let panel, let hostWindow {
+            hostWindow.endSheet(panel)
+        }
     }
 
     // MARK: - Refresh
@@ -82,17 +96,14 @@ class CompressionStatsPanel: NSView {
     // MARK: - Drawing
 
     override func draw(_ dirtyRect: NSRect) {
-        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-        ctx.clear(bounds)
-
         // Background
-        ctx.setFillColor(Theme.chrome.cgColor)
-        ctx.fill(bounds)
+        Theme.chrome.setFill()
+        bounds.fill()
 
         let pad: CGFloat = 24
         var y: CGFloat = 20
 
-        // ── Hero number ──
+        // -- Hero number --
         let tokensSaved = sessionStats.tokensSaved
         let heroStr = formatNumber(tokensSaved)
 
@@ -133,21 +144,19 @@ class CompressionStatsPanel: NSView {
                 height: pillSize.height + pillPadV * 2
             )
             let pillColor = pct >= 20 ? NSColor(hex: 0x30D158).withAlphaComponent(0.12) : Theme.hover
-            ctx.setFillColor(pillColor.cgColor)
-            let pillPath = CGPath(roundedRect: pillRect, cornerWidth: 8, cornerHeight: 8, transform: nil)
-            ctx.addPath(pillPath)
-            ctx.fillPath()
+            pillColor.setFill()
+            NSBezierPath(roundedRect: pillRect, xRadius: 8, yRadius: 8).fill()
             pillText.draw(at: NSPoint(x: pillRect.minX + pillPadH, y: pillRect.minY + pillPadV))
             y += pillRect.height
         }
         y += 20
 
-        // ── Divider ──
-        ctx.setFillColor(Theme.divider.cgColor)
-        ctx.fill(CGRect(x: pad, y: y, width: bounds.width - pad * 2, height: 1))
+        // -- Divider --
+        Theme.divider.setFill()
+        NSRect(x: pad, y: y, width: bounds.width - pad * 2, height: 1).fill()
         y += 16
 
-        // ── Category breakdown ──
+        // -- Category breakdown --
         y = drawSectionHeader("Breakdown", at: y, pad: pad)
         y += 4
 
@@ -179,12 +188,12 @@ class CompressionStatsPanel: NSView {
         totalText.draw(at: NSPoint(x: pad, y: y))
         y += 20
 
-        // ── Divider ──
-        ctx.setFillColor(Theme.divider.cgColor)
-        ctx.fill(CGRect(x: pad, y: y, width: bounds.width - pad * 2, height: 1))
+        // -- Divider --
+        Theme.divider.setFill()
+        NSRect(x: pad, y: y, width: bounds.width - pad * 2, height: 1).fill()
         y += 16
 
-        // ── Per-pane breakdown ──
+        // -- Per-pane breakdown --
         y = drawSectionHeader("Per Pane", at: y, pad: pad)
         y += 4
 
@@ -195,15 +204,11 @@ class CompressionStatsPanel: NSView {
             ]
             NSAttributedString(string: "No active panes", attributes: noDataAttrs)
                 .draw(at: NSPoint(x: pad, y: y))
-            y += 20
         } else {
             for (name, stats) in perPaneStats {
                 y = drawPaneRow(name: name, stats: stats, at: y, pad: pad)
             }
         }
-
-        // ── Done button ──
-        // (Drawn as text; actual button is added as subview)
     }
 
     // MARK: - Drawing Helpers
@@ -222,8 +227,6 @@ class CompressionStatsPanel: NSView {
     private func drawCategoryRow(label: String, tokens: Int, color: NSColor,
                                   maxTokens: Int, barMaxWidth: CGFloat,
                                   at y: CGFloat, pad: CGFloat) -> CGFloat {
-        guard let ctx = NSGraphicsContext.current?.cgContext else { return y + 24 }
-
         let rowH: CGFloat = 24
 
         // Label
@@ -252,19 +255,15 @@ class CompressionStatsPanel: NSView {
         let barH: CGFloat = 10
 
         // Background track
-        ctx.setFillColor(Theme.hover.cgColor)
-        let trackPath = CGPath(roundedRect: CGRect(x: barStartX, y: barY, width: barMaxWidth, height: barH),
-                               cornerWidth: 3, cornerHeight: 3, transform: nil)
-        ctx.addPath(trackPath)
-        ctx.fillPath()
+        Theme.hover.setFill()
+        NSBezierPath(roundedRect: NSRect(x: barStartX, y: barY, width: barMaxWidth, height: barH),
+                     xRadius: 3, yRadius: 3).fill()
 
         // Filled bar
         if barWidth > 0 {
-            ctx.setFillColor(color.cgColor)
-            let fillPath = CGPath(roundedRect: CGRect(x: barStartX, y: barY, width: barWidth, height: barH),
-                                  cornerWidth: 3, cornerHeight: 3, transform: nil)
-            ctx.addPath(fillPath)
-            ctx.fillPath()
+            color.setFill()
+            NSBezierPath(roundedRect: NSRect(x: barStartX, y: barY, width: barWidth, height: barH),
+                         xRadius: 3, yRadius: 3).fill()
         }
 
         return y + rowH
