@@ -4,24 +4,38 @@ import SwiftTerm
 // ---------------------------------------------------------------------------
 // MARK: - FindBarView
 // ---------------------------------------------------------------------------
-/// Floating search bar that overlays the top of the active terminal pane.
+/// Floating search pill that overlays the top-right of the active terminal pane.
 /// Uses SwiftTerm's built-in `findNext` / `findPrevious` / `clearSearch` API.
 ///
 /// Add as a subview of the terminal pane and call `show()`. The bar positions
-/// itself at the top of its superview (8px inset, 24px horizontal margins).
+/// itself at the top-right of its superview as a compact pill.
 class FindBarView: NSView, NSTextFieldDelegate {
 
     // MARK: - Public interface
 
     weak var terminalView: LocalProcessTerminalView?
 
-    /// Reveal the bar and focus the search field.
+    /// Reveal the bar with a slide-down animation and focus the search field.
     func show() {
         isHidden = false
-        window?.makeFirstResponder(searchField)
+
+        // Initial state: 20px above resting position, invisible
+        let restingY = frame.origin.y
+        frame.origin.y = restingY - 20
+        alphaValue = 0
+
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = Theme.Anim.fast
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            self.animator().frame.origin.y = restingY
+            self.animator().alphaValue = 1
+        }, completionHandler: { [weak self] in
+            guard let self else { return }
+            self.window?.makeFirstResponder(self.searchField)
+        })
     }
 
-    /// Clear highlights, remove from superview, and return focus to terminal.
+    /// Clear highlights, animate out, remove from superview, and return focus to terminal.
     func dismiss() {
         let tv = terminalView
         searchField.stringValue = ""
@@ -29,9 +43,18 @@ class FindBarView: NSView, NSTextFieldDelegate {
         currentTerm = ""
         lastFindSucceeded = false
         tv?.clearSearch()
-        isHidden = true
-        removeFromSuperview()
-        if let tv { tv.window?.makeFirstResponder(tv) }
+
+        let currentY = frame.origin.y
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = Theme.Anim.fast
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            self.animator().frame.origin.y = currentY - 10
+            self.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            self?.isHidden = true
+            self?.removeFromSuperview()
+            if let tv { tv.window?.makeFirstResponder(tv) }
+        })
     }
 
     // MARK: - Subviews
@@ -58,15 +81,16 @@ class FindBarView: NSView, NSTextFieldDelegate {
         return l
     }()
 
-    private let prevButton = FindBarView.makeIconButton(title: "\u{2039}", tooltip: "Previous Match")
-    private let nextButton = FindBarView.makeIconButton(title: "\u{203A}", tooltip: "Next Match")
-    private let closeButton = FindBarView.makeIconButton(title: "\u{00D7}", tooltip: "Close")
+    private let prevButton = FindBarView.makeSFSymbolButton(symbolName: "chevron.up", tooltip: "Previous Match")
+    private let nextButton = FindBarView.makeSFSymbolButton(symbolName: "chevron.down", tooltip: "Next Match")
+    private let closeButton = FindBarView.makeSFSymbolButton(symbolName: "xmark", tooltip: "Close")
 
     // MARK: - State
 
     private var currentTerm: String = ""
     private var lastFindSucceeded: Bool = false
     private var buttonTrackingAreas: [NSView: NSTrackingArea] = [:]
+    private var themeObserver: NSObjectProtocol?
 
     // MARK: - Layout constants
 
@@ -74,13 +98,13 @@ class FindBarView: NSView, NSTextFieldDelegate {
 
     private enum K {
         static let barHeight: CGFloat = 36
-        static let insetX: CGFloat = 24
+        static let maxWidth: CGFloat = 320
+        static let rightInset: CGFloat = 12
         static let topInset: CGFloat = 8
         static let innerPadX: CGFloat = 10
         static let buttonSize: CGFloat = 24
         static let buttonGap: CGFloat = 2
         static let statusWidth: CGFloat = 64
-        static let cornerRadius: CGFloat = 8
     }
 
     // MARK: - Init
@@ -94,18 +118,17 @@ class FindBarView: NSView, NSTextFieldDelegate {
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError() }
 
+    deinit {
+        if let obs = themeObserver {
+            NotificationCenter.default.removeObserver(obs)
+        }
+    }
+
     // MARK: - Setup
 
     private func setup() {
         wantsLayer = true
-        layer?.backgroundColor = Theme.surface.withAlphaComponent(0.97).cgColor
-        layer?.cornerRadius = K.cornerRadius
-        layer?.borderWidth = 0.5
-        layer?.borderColor = Theme.borderRest.cgColor
-        layer?.shadowColor = NSColor.black.cgColor
-        layer?.shadowOpacity = 0.06
-        layer?.shadowRadius = 2
-        layer?.shadowOffset = CGSize(width: 0, height: 0.5)
+        applyThemeColors()
 
         searchField.delegate = self
         addSubview(searchField)
@@ -122,21 +145,42 @@ class FindBarView: NSView, NSTextFieldDelegate {
         closeButton.target = self
         closeButton.action = #selector(closeTapped(_:))
         addSubview(closeButton)
+
+        // Observe theme changes
+        themeObserver = NotificationCenter.default.addObserver(
+            forName: Theme.themeDidChange, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.applyThemeColors()
+        }
+    }
+
+    private func applyThemeColors() {
+        layer?.backgroundColor = Theme.surface.withAlphaComponent(0.97).cgColor
+        layer?.cornerRadius = Theme.paneRadius
+        layer?.borderWidth = 0.5
+        layer?.borderColor = Theme.borderRest.cgColor
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = 0.06
+        layer?.shadowRadius = 2
+        layer?.shadowOffset = CGSize(width: 0, height: 0.5)
+        searchField.textColor = Theme.textPrimary
+        statusLabel.textColor = lastFindSucceeded ? Theme.textTertiary : Theme.textSecondary
     }
 
     // MARK: - Superview integration
 
-    /// When added to a pane, size and position automatically.
+    /// When added to a pane, size and position automatically (right-aligned pill).
     override func viewDidMoveToSuperview() {
         super.viewDidMoveToSuperview()
         guard let sv = superview else { return }
+        let barWidth = min(K.maxWidth, sv.bounds.width - 32)
         frame = NSRect(
-            x: K.insetX,
+            x: sv.bounds.width - barWidth - K.rightInset,
             y: K.topInset,
-            width: sv.bounds.width - K.insetX * 2,
+            width: barWidth,
             height: K.barHeight
         )
-        autoresizingMask = [.width]
+        autoresizingMask = [.minXMargin]
         layoutContents()
     }
 
@@ -151,7 +195,7 @@ class FindBarView: NSView, NSTextFieldDelegate {
         let midY = floor((h - K.buttonSize) / 2)
         let fieldY = floor((h - 22) / 2)
 
-        // Close button — rightmost
+        // Close button -- rightmost
         let closeX = bounds.width - K.innerPadX - K.buttonSize
         closeButton.frame = NSRect(x: closeX, y: midY, width: K.buttonSize, height: K.buttonSize)
 
@@ -217,7 +261,7 @@ class FindBarView: NSView, NSTextFieldDelegate {
             return
         }
 
-        // New term — clear previous state and find the first match.
+        // New term -- clear previous state and find the first match.
         terminalView?.clearSearch()
         let found = terminalView?.findNext(term) ?? false
         lastFindSucceeded = found
@@ -235,7 +279,7 @@ class FindBarView: NSView, NSTextFieldDelegate {
             return true
         }
         if commandSelector == #selector(NSResponder.insertNewline(_:)) {
-            // Enter → find next; Shift+Enter → find previous
+            // Enter -> find next; Shift+Enter -> find previous
             if NSApp.currentEvent?.modifierFlags.contains(.shift) == true {
                 findPrevious(self)
             } else {
@@ -283,12 +327,12 @@ class FindBarView: NSView, NSTextFieldDelegate {
         guard event.type == .keyDown else { return super.performKeyEquivalent(with: event) }
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
 
-        // Cmd+G → find next
+        // Cmd+G -> find next
         if flags == .command, event.charactersIgnoringModifiers == "g" {
             findNext(self)
             return true
         }
-        // Cmd+Shift+G → find previous
+        // Cmd+Shift+G -> find previous
         if flags == [.command, .shift], event.charactersIgnoringModifiers == "G" {
             findPrevious(self)
             return true
@@ -296,13 +340,10 @@ class FindBarView: NSView, NSTextFieldDelegate {
         return super.performKeyEquivalent(with: event)
     }
 
-    // MARK: - Button factory
+    // MARK: - Button factory (SF Symbols)
 
-    private static func makeIconButton(title: String, tooltip: String) -> NSButton {
+    private static func makeSFSymbolButton(symbolName: String, tooltip: String) -> NSButton {
         let b = NSButton(frame: NSRect(x: 0, y: 0, width: 24, height: 24))
-        b.title = title
-        b.font = NSFont.systemFont(ofSize: 15, weight: .regular)
-        b.alignment = .center
         b.isBordered = false
         b.wantsLayer = true
         b.layer?.cornerRadius = 4
@@ -310,6 +351,19 @@ class FindBarView: NSView, NSTextFieldDelegate {
         b.bezelStyle = .inline
         b.setButtonType(.momentaryPushIn)
         (b.cell as? NSButtonCell)?.highlightsBy = []
+
+        if let symbolImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip) {
+            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .medium)
+            b.image = symbolImage.withSymbolConfiguration(config)
+            b.imagePosition = .imageOnly
+            b.title = ""
+        } else {
+            // Fallback to text if SF Symbols unavailable
+            b.title = symbolName == "chevron.up" ? "\u{2039}" : symbolName == "chevron.down" ? "\u{203A}" : "\u{00D7}"
+            b.font = NSFont.systemFont(ofSize: 15, weight: .regular)
+            b.alignment = .center
+        }
+
         return b
     }
 }

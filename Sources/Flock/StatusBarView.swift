@@ -107,10 +107,12 @@ class StatusBarView: NSView {
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         let pad = Theme.Space.lg
-        broadcastBadge.frame = NSRect(x: pad, y: 6, width: 70, height: 16)
+        let labelH: CGFloat = 16
+        let labelY = (bounds.height - labelH) / 2
+        broadcastBadge.frame = NSRect(x: pad, y: labelY, width: 70, height: labelH)
         let labelX = (paneManager?.isBroadcasting == true) ? pad + 76 : pad
-        label.frame = NSRect(x: labelX, y: 6, width: 200, height: 16)
-        durationLabel.frame = NSRect(x: bounds.width - 200 - pad, y: 6, width: 200, height: 16)
+        label.frame = NSRect(x: labelX, y: labelY, width: 200, height: labelH)
+        durationLabel.frame = NSRect(x: bounds.width - 200 - pad, y: labelY, width: 200, height: labelH)
     }
 
     override func draw(_ dirtyRect: NSRect) {

@@ -16,6 +16,10 @@ struct ColorTheme {
     let borderRest: NSColor
     let borderFocus: NSColor
 
+    // Accent
+    let accent: NSColor
+    let accentSubtle: NSColor
+
     // Text
     let textPrimary: NSColor
     let textSecondary: NSColor
@@ -32,93 +36,125 @@ struct ColorTheme {
 // MARK: - Built-in Themes
 
 enum Themes {
-    static let all: [ColorTheme] = [flock, claude, midnight, overcast]
+    static let all: [ColorTheme] = [flock, claude, midnight, overcast, linen]
 
     // The original warm cream
     static let flock = ColorTheme(
         id: "flock", name: "Flock",
-        chrome:        NSColor(hex: 0xEDECE8),
-        surface:       NSColor(hex: 0xFAFAF7),
-        hover:         NSColor(hex: 0xE5E4E0),
-        divider:       NSColor(hex: 0xE0DED8),
-        borderRest:    NSColor(hex: 0xDBD9D3),
-        borderFocus:   NSColor(hex: 0xC5C3BC),
-        textPrimary:   NSColor(hex: 0x1A1A1C),
-        textSecondary: NSColor(hex: 0x6E6E73),
-        textTertiary:  NSColor(hex: 0xAEAEB2),
-        terminalBg:    NSColor(hex: 0xFAFAF7),
-        terminalFg:    NSColor(hex: 0x1A1A1C),
+        chrome:        NSColor(hex: 0xE8E3DA),
+        surface:       NSColor(hex: 0xF7F4ED),
+        hover:         NSColor(hex: 0xE2DDD3),
+        divider:       NSColor(hex: 0xD9D3C8),
+        borderRest:    NSColor(hex: 0xD4CEC3),
+        borderFocus:   NSColor(hex: 0xB8B0A3),
+        accent:        NSColor(hex: 0x9B8574),
+        accentSubtle:  NSColor(hex: 0x9B8574, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0x2C2520),
+        textSecondary: NSColor(hex: 0x6A6560),
+        textTertiary:  NSColor(hex: 0x8A857E),
+        terminalBg:    NSColor(hex: 0xFAF7F0),
+        terminalFg:    NSColor(hex: 0x2C2520),
         ansiHex: [
-            0x1D1D1F, 0xFF3B30, 0x28CD41, 0xFF9500,
-            0x007AFF, 0xC4727A, 0x59ADC4, 0xE5E5EA,
-            0x6E6E73, 0xFF6961, 0x5AD85C, 0xFFB340,
-            0x409CFF, 0xD99BA1, 0x7CD4FC, 0xFAFAFA,
+            0x2C2520, 0xC75450, 0x5B9A6B, 0x9B7B2C,
+            0x5B7FA5, 0xA8727E, 0x6A9DAD, 0xE8E3DA,
+            0x7A7168, 0xD97B76, 0x7BB585, 0xD4AD56,
+            0x7A9EC4, 0xC19BA5, 0x8CBFCC, 0xF7F4ED,
         ]
     )
 
-    // Claude cream — warm parchment, soft blue accents, no orange
+    // Claude cream -- warm parchment, terracotta accent
     static let claude = ColorTheme(
         id: "claude", name: "Claude",
-        chrome:        NSColor(hex: 0xF0EDE6),
-        surface:       NSColor(hex: 0xFAF9F5),
-        hover:         NSColor(hex: 0xE8E4DC),
-        divider:       NSColor(hex: 0xDDD9D0),
-        borderRest:    NSColor(hex: 0xD5D0C7),
-        borderFocus:   NSColor(hex: 0xB8B0A4),
-        textPrimary:   NSColor(hex: 0x1B1714),
-        textSecondary: NSColor(hex: 0x6B6560),
-        textTertiary:  NSColor(hex: 0xA8A29C),
-        terminalBg:    NSColor(hex: 0xFAF9F5),
-        terminalFg:    NSColor(hex: 0x1B1714),
+        chrome:        NSColor(hex: 0xE9E0D1),
+        surface:       NSColor(hex: 0xF5EFE4),
+        hover:         NSColor(hex: 0xDED6C8),
+        divider:       NSColor(hex: 0xD3CABB),
+        borderRest:    NSColor(hex: 0xCCC2B1),
+        borderFocus:   NSColor(hex: 0xA89A89),
+        accent:        NSColor(hex: 0xB5524A),
+        accentSubtle:  NSColor(hex: 0xB5524A, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0x30261E),
+        textSecondary: NSColor(hex: 0x6D6356),
+        textTertiary:  NSColor(hex: 0x8D8475),
+        terminalBg:    NSColor(hex: 0xF8F2E8),
+        terminalFg:    NSColor(hex: 0x30261E),
         ansiHex: [
-            0x1B1714, 0xC4453A, 0x3D8B53, 0xA68932,
-            0x4A7FB5, 0x8E6B8A, 0x4E97A8, 0xE8E4DC,
-            0x6B6560, 0xD6665C, 0x5AAF6E, 0xC4A84E,
-            0x6B9FD4, 0xAE8BA8, 0x6EB8C8, 0xFAF9F5,
+            0x30261E, 0xB5524A, 0x5A8F61, 0xB89840,
+            0x5D7FA0, 0x96717E, 0x5E949E, 0xE9E0D1,
+            0x7D7063, 0xCC7A72, 0x7AAD7D, 0xCBB265,
+            0x7D9DBF, 0xB5929E, 0x7FB5BE, 0xF5EFE4,
         ]
     )
 
-    // Dark mode
+    // Dark mode -- warm near-black
     static let midnight = ColorTheme(
         id: "midnight", name: "Midnight",
-        chrome:        NSColor(hex: 0x1C1C1E),
-        surface:       NSColor(hex: 0x2C2C2E),
-        hover:         NSColor(hex: 0x3A3A3C),
-        divider:       NSColor(hex: 0x38383A),
-        borderRest:    NSColor(hex: 0x48484A),
-        borderFocus:   NSColor(hex: 0x636366),
-        textPrimary:   NSColor(hex: 0xF2F2F7),
-        textSecondary: NSColor(hex: 0xAEAEB2),
-        textTertiary:  NSColor(hex: 0x636366),
-        terminalBg:    NSColor(hex: 0x1C1C1E),
-        terminalFg:    NSColor(hex: 0xF2F2F7),
+        chrome:        NSColor(hex: 0x1A1918),
+        surface:       NSColor(hex: 0x252321),
+        hover:         NSColor(hex: 0x33302D),
+        divider:       NSColor(hex: 0x302D2A),
+        borderRest:    NSColor(hex: 0x3E3A36),
+        borderFocus:   NSColor(hex: 0x5C5550),
+        accent:        NSColor(hex: 0x6A9FD4),
+        accentSubtle:  NSColor(hex: 0x6A9FD4, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0xE8E4DE),
+        textSecondary: NSColor(hex: 0xA09890),
+        textTertiary:  NSColor(hex: 0x706860),
+        terminalBg:    NSColor(hex: 0x1C1A19),
+        terminalFg:    NSColor(hex: 0xE8E4DE),
         ansiHex: [
-            0x1C1C1E, 0xFF453A, 0x30D158, 0xFFD60A,
-            0x0A84FF, 0xBF5AF2, 0x64D2FF, 0xE5E5EA,
-            0x636366, 0xFF6961, 0x5AD85C, 0xFFE066,
-            0x409CFF, 0xDA8FFF, 0x7CD4FC, 0xF2F2F7,
+            0x1A1918, 0xD4655E, 0x6BBF7A, 0xD4B94E,
+            0x6A9FD4, 0xA87EC4, 0x72B8CC, 0xE8E4DE,
+            0x635C55, 0xE08A84, 0x85CC8A, 0xDCC86E,
+            0x85B3D9, 0xBFA0D4, 0x8FC5D9, 0xE8E4DE,
         ]
     )
 
-    // Cool grey
+    // Cool grey -- fog blue undertone
     static let overcast = ColorTheme(
         id: "overcast", name: "Overcast",
-        chrome:        NSColor(hex: 0xE8EAED),
-        surface:       NSColor(hex: 0xF4F5F7),
-        hover:         NSColor(hex: 0xDFE1E5),
-        divider:       NSColor(hex: 0xD4D6DB),
-        borderRest:    NSColor(hex: 0xCDD0D5),
-        borderFocus:   NSColor(hex: 0xB0B4BC),
-        textPrimary:   NSColor(hex: 0x1A1C20),
-        textSecondary: NSColor(hex: 0x5F6368),
-        textTertiary:  NSColor(hex: 0x9AA0A6),
-        terminalBg:    NSColor(hex: 0xF4F5F7),
-        terminalFg:    NSColor(hex: 0x1A1C20),
+        chrome:        NSColor(hex: 0xE2E5EA),
+        surface:       NSColor(hex: 0xEFF1F4),
+        hover:         NSColor(hex: 0xD8DCE2),
+        divider:       NSColor(hex: 0xCDD1D8),
+        borderRest:    NSColor(hex: 0xC4C9D1),
+        borderFocus:   NSColor(hex: 0xA3A9B4),
+        accent:        NSColor(hex: 0x5580B5),
+        accentSubtle:  NSColor(hex: 0x5580B5, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0x1E2228),
+        textSecondary: NSColor(hex: 0x555D6A),
+        textTertiary:  NSColor(hex: 0x7D8494),
+        terminalBg:    NSColor(hex: 0xF0F2F5),
+        terminalFg:    NSColor(hex: 0x1E2228),
         ansiHex: [
-            0x1A1C20, 0xDC3545, 0x28A745, 0xD4A017,
-            0x0D6EFD, 0x8B5CF6, 0x0DCAF0, 0xDFE1E5,
-            0x5F6368, 0xEA6875, 0x4ECB71, 0xE8BD3E,
-            0x3D8BFD, 0xA78BFA, 0x3DD5F3, 0xF4F5F7,
+            0x1E2228, 0xC45462, 0x5A9A6E, 0xBFA04A,
+            0x5580B5, 0x8B7AAD, 0x5EAAB8, 0xE2E5EA,
+            0x5A6170, 0xD4808A, 0x7AB88C, 0xCCB562,
+            0x7098C4, 0xA498BF, 0x78BDCC, 0xEFF1F4,
+        ]
+    )
+
+    // True sunlit light theme
+    static let linen = ColorTheme(
+        id: "linen", name: "Linen",
+        chrome:        NSColor(hex: 0xF0EEEB),
+        surface:       NSColor(hex: 0xFBFAF8),
+        hover:         NSColor(hex: 0xE9E7E3),
+        divider:       NSColor(hex: 0xE3E1DC),
+        borderRest:    NSColor(hex: 0xDDD9D4),
+        borderFocus:   NSColor(hex: 0xB5AFA7),
+        accent:        NSColor(hex: 0x7A8A7A),
+        accentSubtle:  NSColor(hex: 0x7A8A7A, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0x2C2B28),
+        textSecondary: NSColor(hex: 0x6A6662),
+        textTertiary:  NSColor(hex: 0x8A8680),
+        terminalBg:    NSColor(hex: 0xFBFAF8),
+        terminalFg:    NSColor(hex: 0x2C2B28),
+        ansiHex: [
+            0x2C2B28, 0xC93D37, 0x3A7D44, 0x9B7B2C,
+            0x2E6BB5, 0x9B4D96, 0x2B8A7E, 0xE9E7E3,
+            0x7A766F, 0xE05550, 0x4E9A5A, 0xB8962E,
+            0x4A8AD4, 0xB86DB2, 0x3BAFA1, 0xFBFAF8,
         ]
     )
 }
@@ -131,9 +167,64 @@ struct Theme {
     static var active: ColorTheme {
         get { _active }
         set {
+            let window = NSApp.windows.first
+            if let window {
+                crossDissolve(in: window, duration: 0.25)
+            }
             _active = newValue
             NotificationCenter.default.post(name: themeDidChange, object: nil)
         }
+    }
+
+    /// Captures a snapshot of the window content, updates theme underneath,
+    /// then fades the snapshot to reveal the new theme.
+    static func crossDissolve(in window: NSWindow, duration: TimeInterval) {
+        guard let contentView = window.contentView,
+              let contentLayer = contentView.layer else { return }
+
+        // Capture snapshot of current appearance
+        let bounds = contentLayer.bounds
+        guard bounds.width > 0, bounds.height > 0 else { return }
+
+        let scale = window.backingScaleFactor
+        let pixelW = Int(bounds.width * scale)
+        let pixelH = Int(bounds.height * scale)
+        guard pixelW > 0, pixelH > 0 else { return }
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let ctx = CGContext(
+            data: nil,
+            width: pixelW,
+            height: pixelH,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue
+        ) else { return }
+
+        ctx.scaleBy(x: scale, y: scale)
+        contentLayer.render(in: ctx)
+
+        guard let cgImage = ctx.makeImage() else { return }
+
+        // Create overlay layer with the snapshot
+        let snapshotLayer = CALayer()
+        snapshotLayer.frame = bounds
+        snapshotLayer.contents = cgImage
+        snapshotLayer.contentsGravity = .resizeAspectFill
+        snapshotLayer.contentsScale = scale
+        snapshotLayer.zPosition = 10000
+        contentLayer.addSublayer(snapshotLayer)
+
+        // Fade the snapshot out to reveal the updated theme
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(duration)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        CATransaction.setCompletionBlock {
+            snapshotLayer.removeFromSuperlayer()
+        }
+        snapshotLayer.opacity = 0
+        CATransaction.commit()
     }
 
     static let themeDidChange = Notification.Name("FlockThemeDidChange")
@@ -147,6 +238,10 @@ struct Theme {
     // Focus
     static var borderRest:  NSColor { active.borderRest }
     static var borderFocus: NSColor { active.borderFocus }
+
+    // Accent
+    static var accent:       NSColor { active.accent }
+    static var accentSubtle: NSColor { active.accentSubtle }
 
     // Text
     static var textPrimary:   NSColor { active.textPrimary }
@@ -174,9 +269,9 @@ struct Theme {
     // MARK: - Layout
 
     static let tabBarHeight:  CGFloat = 44
-    static let statusHeight:  CGFloat = 28
-    static let paneGap:       CGFloat = Space.md
-    static let panePadding:   CGFloat = Space.md
+    static let statusHeight:  CGFloat = 24
+    static let paneGap:       CGFloat = Space.sm
+    static let panePadding:   CGFloat = Space.lg
     static let paneRadius:    CGFloat = 10
 
     // MARK: - Animation
@@ -191,14 +286,27 @@ struct Theme {
         }
     }
 
+    // MARK: - Accessibility
+
+    static var prefersReducedMotion: Bool {
+        NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
     // MARK: - Typography
 
     enum Typo {
-        static let brand      = NSFont.systemFont(ofSize: 14, weight: .semibold)
-        static let tabActive  = NSFont.systemFont(ofSize: 12.5, weight: .medium)
-        static let tabRest    = NSFont.systemFont(ofSize: 12.5, weight: .regular)
-        static let button     = NSFont.systemFont(ofSize: 11.5, weight: .medium)
-        static let status     = NSFont.systemFont(ofSize: 11, weight: .regular)
+        static let searchInput   = NSFont.systemFont(ofSize: 16, weight: .medium)
+        static let body          = NSFont.systemFont(ofSize: 13, weight: .regular)
+        static let tabActive     = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        static let tabRest       = NSFont.systemFont(ofSize: 13, weight: .regular)
+        static let button        = NSFont.systemFont(ofSize: 12, weight: .medium)
+        static let status        = NSFont.systemFont(ofSize: 11, weight: .regular)
+        static let caption       = NSFont.systemFont(ofSize: 11, weight: .regular)
+        static let sectionHeader = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        static let brand         = NSFont.systemFont(ofSize: 11, weight: .medium)
+        static let badge         = NSFont.boldSystemFont(ofSize: 9)
+        static let monoSmall     = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        static let monoDigit     = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         static let brandKern: CGFloat = 1.2
     }
 
@@ -212,12 +320,12 @@ struct Theme {
 
     enum Shadow {
         enum Rest {
-            static let contact = ShadowConfig(opacity: 0.04, radius: 2, offset: CGSize(width: 0, height: 0.5))
-            static let ambient = ShadowConfig(opacity: 0.03, radius: 16, offset: CGSize(width: 0, height: 4))
+            static let contact = ShadowConfig(opacity: 0.06, radius: 3, offset: CGSize(width: 0, height: 1))
+            static let ambient = ShadowConfig(opacity: 0.05, radius: 12, offset: CGSize(width: 0, height: 3))
         }
         enum Focus {
-            static let contact = ShadowConfig(opacity: 0.08, radius: 3, offset: CGSize(width: 0, height: 1))
-            static let ambient = ShadowConfig(opacity: 0.06, radius: 20, offset: CGSize(width: 0, height: 8))
+            static let contact = ShadowConfig(opacity: 0.12, radius: 4, offset: CGSize(width: 0, height: 1.5))
+            static let ambient = ShadowConfig(opacity: 0.10, radius: 24, offset: CGSize(width: 0, height: 10))
         }
     }
 }
@@ -229,6 +337,15 @@ extension NSColor {
             green:   CGFloat((hex >> 8) & 0xFF) / 255.0,
             blue:    CGFloat(hex & 0xFF) / 255.0,
             alpha:   1.0
+        )
+    }
+
+    convenience init(hex: Int, alpha: Int) {
+        self.init(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255.0,
+            green:   CGFloat((hex >> 8) & 0xFF) / 255.0,
+            blue:    CGFloat(hex & 0xFF) / 255.0,
+            alpha:   CGFloat(alpha) / 255.0
         )
     }
 }

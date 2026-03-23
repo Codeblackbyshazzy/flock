@@ -54,6 +54,8 @@ enum ShellEnhancer {
         env["ZDOTDIR"] = zdotdir
         env["TERM"] = "xterm-256color"
         env["COLORTERM"] = "truecolor"
+        env["TERM_PROGRAM"] = "Flock"
+        env["TERM_PROGRAM_VERSION"] = "1.0"
         if let dir = workingDirectory {
             env["HOME_OVERRIDE"] = dir  // not used, just for reference
         }

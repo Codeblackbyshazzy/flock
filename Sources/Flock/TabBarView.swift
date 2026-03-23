@@ -10,8 +10,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
     private var editField: NSTextField?
     private var editingIndex: Int = -1
 
-    // Hover animation state: per-tab progress 0→1
+    // Hover animation state: per-tab progress 0->1
     private var tabHoverProgress: [Int: CGFloat] = [:]
+    // Tab close animation state: per-tab progress 0->1 (1 = fully collapsed)
+    private var tabCloseProgress: [Int: CGFloat] = [:]
+    private var pendingCloseTabIndices: [Int] = []
     private var hoverTimer: Timer?
 
     // Active indicator layer (renders above draw content — intentional)
@@ -26,8 +29,47 @@ class TabBarView: NSView, NSTextFieldDelegate {
     private let tabGap: CGFloat = 2
 
     private let brandText = "flock"
-    private let brandPadL: CGFloat = Theme.Space.lg
     private let brandGap:  CGFloat = Theme.Space.xl
+
+    // Dynamic left padding to clear traffic light buttons in fullSizeContentView mode
+    private var brandPadL: CGFloat {
+        guard let window = window else { return 78 }
+        let zoomBtn = window.standardWindowButton(.zoomButton)
+            ?? window.standardWindowButton(.miniaturizeButton)
+            ?? window.standardWindowButton(.closeButton)
+        guard let btn = zoomBtn else { return 78 }
+        // Get the button's right edge in window coordinates
+        if let superview = btn.superview {
+            let btnInSuper = btn.frame
+            // The traffic light buttons are in a container -- use the button's
+            // position within its container, not the container's frame
+            let rightEdge = superview.convert(CGPoint(x: btnInSuper.maxX, y: 0), to: self).x
+            if rightEdge > 0 && rightEdge < 200 {
+                return rightEdge + 12
+            }
+        }
+        // Hardcoded fallback: standard traffic light width is ~68pt
+        return 78
+    }
+
+    // Vertical center aligned with traffic light buttons (not full bounds center)
+    private var contentCenterY: CGFloat {
+        guard let window = window,
+              let closeBtn = window.standardWindowButton(.closeButton) else {
+            return bounds.height / 2
+        }
+        // Get the traffic light's vertical center in tab bar coordinates
+        if let superview = closeBtn.superview {
+            let btnCenter = superview.convert(
+                CGPoint(x: 0, y: closeBtn.frame.midY),
+                to: self
+            ).y
+            if btnCenter > 0 && btnCenter < bounds.height {
+                return btnCenter
+            }
+        }
+        return bounds.height / 2
+    }
 
     override var isFlipped: Bool { true }
 
@@ -35,10 +77,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
         self.paneManager = paneManager
         super.init(frame: .zero)
         wantsLayer = true
-        layer?.backgroundColor = Theme.chrome.cgColor
+        // Semi-transparent so the NSVisualEffectView behind shows through
+        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.88).cgColor
 
         // Active indicator: thin bar under active tab
-        activeIndicator.backgroundColor = Theme.textPrimary.withAlphaComponent(0.15).cgColor
+        activeIndicator.backgroundColor = Theme.accent.cgColor
         activeIndicator.cornerRadius = 1
         activeIndicator.isHidden = true
         layer?.addSublayer(activeIndicator)
@@ -48,8 +91,8 @@ class TabBarView: NSView, NSTextFieldDelegate {
     }
 
     @objc private func themeChanged() {
-        layer?.backgroundColor = Theme.chrome.cgColor
-        activeIndicator.backgroundColor = Theme.textPrimary.withAlphaComponent(0.15).cgColor
+        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.88).cgColor
+        activeIndicator.backgroundColor = Theme.accent.cgColor
         needsDisplay = true
     }
 
@@ -112,10 +155,10 @@ class TabBarView: NSView, NSTextFieldDelegate {
     private func tickHover() {
         guard let mgr = paneManager else { return }
         var changed = false
-        let step: CGFloat = 0.15  // converges in ~6-7 frames ≈ 0.1s
+        let step: CGFloat = 0.15  // converges in ~6-7 frames ~ 0.1s
 
-        // Animate toward targets
-        for i in 0..<mgr.panes.count {
+        // Animate hover toward targets
+        for i in 0..<mgr.tabNodes.count {
             let target: CGFloat = (i == hoveredTab) ? 1.0 : 0.0
             let current = tabHoverProgress[i] ?? 0.0
             let diff = target - current
@@ -131,12 +174,44 @@ class TabBarView: NSView, NSTextFieldDelegate {
             }
         }
 
+        // Animate tab close progress
+        let closeStep: CGFloat = 0.12  // converges in ~8 frames ~ 0.13s
+        var completed: [Int] = []
+        for idx in tabCloseProgress.keys {
+            let current = tabCloseProgress[idx] ?? 0.0
+            let diff = 1.0 - current
+            if abs(diff) < 0.01 {
+                tabCloseProgress[idx] = 1.0
+                completed.append(idx)
+                changed = true
+            } else {
+                tabCloseProgress[idx] = current + diff * closeStep
+                changed = true
+            }
+        }
+
+        // Clean up completed close animations
+        for idx in completed {
+            tabCloseProgress.removeValue(forKey: idx)
+        }
+        if !completed.isEmpty {
+            // The actual close already happened; just stop tracking
+            pendingCloseTabIndices.removeAll(where: { completed.contains($0) })
+        }
+
         if changed {
             needsDisplay = true
         } else {
             hoverTimer?.invalidate()
             hoverTimer = nil
         }
+    }
+
+    /// Begin close animation for a tab index (called before the actual data is removed)
+    func animateTabClose(at index: Int) {
+        tabCloseProgress[index] = 0.0
+        pendingCloseTabIndices.append(index)
+        startHoverAnimation()
     }
 
     // Tab drag reorder state
@@ -176,7 +251,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         guard let mgr = paneManager else { return [] }
 
         // Calculate natural widths first
-        let y = (bounds.height - tabH) / 2
+        let y = contentCenterY - tabH / 2
         var naturalWidths: [CGFloat] = []
         for (i, node) in mgr.tabNodes.enumerated() {
             let label = tabLabel(for: i, node: node)
@@ -201,9 +276,12 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
         var frames: [CGRect] = []
         var x = tabsOriginX
-        for w in widths {
-            frames.append(CGRect(x: x, y: y, width: w, height: tabH))
-            x += w + tabGap
+        for (i, w) in widths.enumerated() {
+            let closeP = tabCloseProgress[i] ?? 0.0
+            let effectiveW = w * (1.0 - closeP)
+            let effectiveGap = tabGap * (1.0 - closeP)
+            frames.append(CGRect(x: x, y: y, width: effectiveW, height: tabH))
+            x += effectiveW + effectiveGap
         }
         return frames
     }
@@ -219,7 +297,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
     private func buttonFrames() -> (claude: CGRect, shell: CGRect) {
         let btnH: CGFloat = 26
-        let y = (bounds.height - btnH) / 2
+        let y = contentCenterY - btnH / 2
         let shellW = "+ shell".size(withAttributes: [.font: Theme.Typo.button]).width + 20
         let claudeW = "+ claude".size(withAttributes: [.font: Theme.Typo.button]).width + 20
         let shellX = bounds.width - shellW - Theme.Space.lg
@@ -236,8 +314,8 @@ class TabBarView: NSView, NSTextFieldDelegate {
         guard let ctx = NSGraphicsContext.current?.cgContext,
               let mgr = paneManager else { return }
 
-        // Chrome background
-        ctx.setFillColor(Theme.chrome.cgColor)
+        // Chrome background (semi-transparent for vibrancy)
+        ctx.setFillColor(Theme.chrome.withAlphaComponent(0.88).cgColor)
         ctx.fill(bounds)
 
         // Bottom divider — gradient fade at edges
@@ -251,7 +329,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         ]
         let brandSz = brandText.size(withAttributes: brandAttrs)
         brandText.draw(
-            at: NSPoint(x: brandPadL, y: (bounds.height - brandSz.height) / 2),
+            at: NSPoint(x: brandPadL, y: contentCenterY - brandSz.height / 2),
             withAttributes: brandAttrs
         )
 
@@ -263,9 +341,20 @@ class TabBarView: NSView, NSTextFieldDelegate {
             if i == editingIndex { continue }
 
             let rect = frames[i]
+            let closeP = tabCloseProgress[i] ?? 0.0
             let active = (i == activeTabIdx)
             let hovered = (i == hoveredTab)
             let hoverAlpha = tabHoverProgress[i] ?? 0.0
+
+            // Skip fully collapsed tabs
+            if closeP >= 0.99 { continue }
+
+            // Apply alpha for closing tabs
+            if closeP > 0.01 {
+                ctx.saveGState()
+                ctx.setAlpha(1.0 - closeP)
+                ctx.clip(to: rect)
+            }
 
             // Tab background
             let bgPath = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
@@ -326,6 +415,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 ctx.move(to: CGPoint(x: cx + s, y: cy - s))
                 ctx.addLine(to: CGPoint(x: cx - s, y: cy + s))
                 ctx.strokePath()
+            }
+
+            // Restore state if we were animating close
+            if closeP > 0.01 {
+                ctx.restoreGState()
             }
         }
 

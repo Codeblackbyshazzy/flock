@@ -9,6 +9,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
     private let clipView = NSView(frame: .zero)
     private let ambientShadowLayer = CALayer()
+    private let dimOverlayLayer = CALayer()
 
     // Agent activity detection (Claude panes only)
     private(set) var isAgentActive: Bool = false
@@ -42,7 +43,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     private let paneTitleBar = NSView(frame: .zero)
     private let titleProcessLabel = NSTextField(labelWithString: "")
     private let titleCwdLabel = NSTextField(labelWithString: "")
-    private let titleBarHeight: CGFloat = 20
+    private let titleBarHeight: CGFloat = 24
 
     var isFocused: Bool = false {
         didSet {
@@ -72,7 +73,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
         layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
 
-        layer?.borderWidth = 0.5
+        layer?.borderWidth = 1
         layer?.borderColor = Theme.borderRest.cgColor
 
         // Ambient shadow
@@ -94,6 +95,12 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         clipView.layer?.cornerRadius = Theme.paneRadius
         clipView.layer?.masksToBounds = true
         addSubview(clipView)
+
+        // Dim overlay for unfocused panes
+        dimOverlayLayer.backgroundColor = Theme.chrome.withAlphaComponent(0.04).cgColor
+        dimOverlayLayer.cornerRadius = Theme.paneRadius
+        dimOverlayLayer.opacity = 1  // starts dimmed (unfocused)
+        layer?.addSublayer(dimOverlayLayer)
 
         // Pane title bar
         paneTitleBar.wantsLayer = true
@@ -168,6 +175,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         layer?.backgroundColor = Theme.surface.cgColor
         layer?.borderColor = (isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
         ambientShadowLayer.backgroundColor = Theme.surface.cgColor
+        dimOverlayLayer.backgroundColor = Theme.chrome.withAlphaComponent(0.04).cgColor
         terminalView.nativeBackgroundColor = Theme.terminalBg
         terminalView.nativeForegroundColor = Theme.terminalFg
         paneTitleBar.layer?.backgroundColor = Theme.chrome.cgColor
@@ -240,24 +248,27 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         CATransaction.setAnimationDuration(Theme.Anim.normal)
         CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
 
+        // Constant border width -- only animate color (prevents layout twitch)
+        layer?.borderWidth = 1
+
         if isFocused {
             layer?.shadowOpacity = Theme.Shadow.Focus.contact.opacity
             layer?.shadowRadius = Theme.Shadow.Focus.contact.radius
             layer?.shadowOffset = Theme.Shadow.Focus.contact.offset
             layer?.borderColor = Theme.borderFocus.cgColor
-            layer?.borderWidth = 1
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Focus.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Focus.ambient.radius
             ambientShadowLayer.shadowOffset = Theme.Shadow.Focus.ambient.offset
+            dimOverlayLayer.opacity = 0
         } else {
             layer?.shadowOpacity = Theme.Shadow.Rest.contact.opacity
             layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
             layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
             layer?.borderColor = Theme.borderRest.cgColor
-            layer?.borderWidth = 0.5
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Rest.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Rest.ambient.radius
             ambientShadowLayer.shadowOffset = Theme.Shadow.Rest.ambient.offset
+            dimOverlayLayer.opacity = 1
         }
 
         CATransaction.commit()
@@ -331,10 +342,16 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         clipView.frame = bounds
         let titleY: CGFloat = 0
         paneTitleBar.frame = CGRect(x: 0, y: titleY, width: clipView.bounds.width, height: titleBarHeight)
-        titleProcessLabel.frame = CGRect(x: 8, y: 2, width: paneTitleBar.bounds.width / 2 - 12, height: 16)
-        titleCwdLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2, y: 2, width: paneTitleBar.bounds.width / 2 - 8, height: 16)
-        terminalView.frame = CGRect(x: 0, y: titleBarHeight, width: clipView.bounds.width, height: clipView.bounds.height - titleBarHeight)
+        // Vertically center the labels in the title bar
+        let labelH: CGFloat = 16
+        let labelY = (titleBarHeight - labelH) / 2
+        titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: paneTitleBar.bounds.width / 2 - 12, height: labelH)
+        titleCwdLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2, y: labelY, width: paneTitleBar.bounds.width / 2 - 8, height: labelH)
+        // Terminal inner padding: 8px on left, right, and bottom
+        let pad: CGFloat = 8
+        terminalView.frame = CGRect(x: pad, y: titleBarHeight, width: clipView.bounds.width - pad * 2, height: clipView.bounds.height - titleBarHeight - pad)
         ambientShadowLayer.frame = bounds
+        dimOverlayLayer.frame = bounds
         accentBarLayer.frame = CGRect(x: 4, y: 0, width: bounds.width - 8, height: 3)
     }
 

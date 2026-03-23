@@ -40,15 +40,15 @@ class CommandPalette {
         contentView.addSubview(backdrop)
         self.backdropView = backdrop
 
-        // Card
+        // Card -- positioned in upper third of window
         let cardWidth: CGFloat = 420
         let cardMaxHeight: CGFloat = 380
         let cardX = floor((contentView.bounds.width - cardWidth) / 2)
         let cardY: CGFloat
         if contentView.isFlipped {
-            cardY = floor((contentView.bounds.height - cardMaxHeight) / 2)
+            cardY = contentView.bounds.height * 0.25
         } else {
-            cardY = floor((contentView.bounds.height - cardMaxHeight) / 2)
+            cardY = contentView.bounds.height - contentView.bounds.height * 0.25 - cardMaxHeight
         }
 
         let card = CommandCardView(
@@ -65,19 +65,29 @@ class CommandPalette {
         contentView.addSubview(card)
         self.cardView = card
 
-        // Animate in
+        // Animate in with scale
         backdrop.alphaValue = 0
         card.alphaValue = 0
+        card.wantsLayer = true
+        card.layer?.transform = CATransform3DMakeScale(0.97, 0.97, 1)
 
         NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = Theme.Anim.fast
+            ctx.duration = 0.18
             ctx.timingFunction = Theme.Anim.snappyTimingFunction
             backdrop.animator().alphaValue = 1
             card.animator().alphaValue = 1
         }
 
-        // Focus the search field
-        window.makeFirstResponder(card.searchField)
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.18)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+        card.layer?.transform = CATransform3DIdentity
+        CATransaction.commit()
+
+        // Focus the search field after animation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            window.makeFirstResponder(card.searchField)
+        }
     }
 
     func dismiss() {
@@ -89,12 +99,20 @@ class CommandPalette {
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = Theme.Anim.fast
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
             backdrop?.animator().alphaValue = 0
             card?.animator().alphaValue = 0
         }, completionHandler: {
             backdrop?.removeFromSuperview()
             card?.removeFromSuperview()
         })
+
+        // Scale down on dismiss
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Theme.Anim.fast)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+        card?.layer?.transform = CATransform3DMakeScale(0.98, 0.98, 1)
+        CATransaction.commit()
 
         self.backdropView = nil
         self.cardView = nil
@@ -469,6 +487,11 @@ private class CommandResultsView: NSView {
                 Theme.hover.setFill()
                 let bgPath = NSBezierPath(roundedRect: rowRect.insetBy(dx: 4, dy: 1), xRadius: 6, yRadius: 6)
                 bgPath.fill()
+
+                // Left accent bar (3px wide)
+                Theme.accent.setFill()
+                let accentBarRect = NSRect(x: 4, y: rowRect.minY + 4, width: 3, height: rowRect.height - 8)
+                NSBezierPath(roundedRect: accentBarRect, xRadius: 1.5, yRadius: 1.5).fill()
             } else if i == hoveredIndex {
                 Theme.hover.withAlphaComponent(0.5).setFill()
                 let bgPath = NSBezierPath(roundedRect: rowRect.insetBy(dx: 4, dy: 1), xRadius: 6, yRadius: 6)

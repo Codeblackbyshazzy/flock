@@ -21,7 +21,7 @@ class FlockWindow: NSWindow {
 
         super.init(
             contentRect: NSRect(x: 0, y: 0, width: w, height: h),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -44,6 +44,7 @@ class FlockWindow: NSWindow {
         rootView.tabBar = tabBar
         rootView.gridContainer = gridContainer
         rootView.statusBar = statusBar
+        rootView.addSubview(rootView.tabBarEffectView)
         rootView.addSubview(tabBar)
         rootView.addSubview(gridContainer)
         rootView.addSubview(statusBar)
@@ -59,15 +60,33 @@ class FlockRootView: NSView {
     weak var tabBar: NSView?
     weak var gridContainer: NSView?
     weak var statusBar: NSView?
+    let tabBarEffectView: NSVisualEffectView = {
+        let v = NSVisualEffectView(frame: .zero)
+        v.material = .titlebar
+        v.blendingMode = .behindWindow
+        v.state = .followsWindowActiveState
+        return v
+    }()
 
     override var isFlipped: Bool { true }
+
+    private var titlebarInset: CGFloat {
+        guard let window = window else { return 0 }
+        // In fullSizeContentView mode, content extends behind titlebar.
+        // The titlebar height is the difference between frame and content layout rect.
+        let frameInWindow = window.contentLayoutRect
+        let fullFrame = NSRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
+        return fullFrame.height - frameInWindow.height
+    }
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         let w = bounds.width
         let h = bounds.height
-        let tabH = Theme.tabBarHeight
+        let inset = titlebarInset
+        let tabH = Theme.tabBarHeight + inset
         let statusH = Theme.statusHeight
 
+        tabBarEffectView.frame = NSRect(x: 0, y: 0, width: w, height: tabH)
         tabBar?.frame       = NSRect(x: 0, y: 0, width: w, height: tabH)
         gridContainer?.frame = NSRect(x: 0, y: tabH, width: w, height: h - tabH - statusH)
         statusBar?.frame    = NSRect(x: 0, y: h - statusH, width: w, height: statusH)

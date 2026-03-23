@@ -51,6 +51,7 @@ class PaneManager {
         if let tabIdx = tabNodes.firstIndex(where: { $0.findLeaf(containing: pane) != nil }) {
             if tabNodes[tabIdx].leafCount <= 1 {
                 // Only leaf in this tab — remove the entire tab node
+                tabBar?.animateTabClose(at: tabIdx)
                 tabNodes.remove(at: tabIdx)
             } else {
                 // Part of a split — remove pane and promote sibling
@@ -85,6 +86,7 @@ class PaneManager {
 
     func closeTab(at tabIndex: Int) {
         guard tabIndex >= 0, tabIndex < tabNodes.count else { return }
+        tabBar?.animateTabClose(at: tabIndex)
         let leaves = tabNodes[tabIndex].allLeaves
         tabNodes.remove(at: tabIndex)
         for pane in leaves {
@@ -157,14 +159,32 @@ class PaneManager {
     func toggleBroadcast() {
         isBroadcasting.toggle()
         statusBar?.update()
-        // Visual feedback: update all pane borders
+
+        // Animate border color changes (constant 1pt width -- no width animation)
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Theme.Anim.normal)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+
         for pane in panes {
             if isBroadcasting {
                 pane.layer?.borderColor = NSColor(hex: 0xFF9500).withAlphaComponent(0.6).cgColor
-                pane.layer?.borderWidth = 1.5
             } else {
                 pane.layer?.borderColor = (pane.isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
-                pane.layer?.borderWidth = pane.isFocused ? 1 : 0.5
+            }
+        }
+
+        CATransaction.commit()
+
+        // On broadcast enable, pulse the border color briefly
+        if isBroadcasting {
+            for pane in panes {
+                let pulse = CABasicAnimation(keyPath: "borderColor")
+                pulse.fromValue = NSColor(hex: 0xFF9500).withAlphaComponent(0.6).cgColor
+                pulse.toValue = NSColor(hex: 0xFF9500).withAlphaComponent(0.9).cgColor
+                pulse.duration = 0.3
+                pulse.autoreverses = true
+                pulse.timingFunction = Theme.Anim.snappyTimingFunction
+                pane.layer?.add(pulse, forKey: "broadcastPulse")
             }
         }
     }
@@ -276,8 +296,7 @@ class PaneManager {
         let pane = panes[activePaneIndex]
         let bar = FindBarView(terminalView: pane.terminalView)
         pane.addSubview(bar)
-        bar.frame = CGRect(x: 24, y: 8, width: pane.bounds.width - 48, height: 36)
-        bar.autoresizingMask = [.width]
+        // FindBarView positions itself in viewDidMoveToSuperview (right-aligned pill)
         bar.show()
         findBar = bar
     }
