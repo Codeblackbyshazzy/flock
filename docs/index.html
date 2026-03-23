@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flock — let your agents loose</title>
+  <meta name="description" content="Run parallel Claude Code sessions in one beautiful native macOS app. No electron. Just vibes.">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cream: #F5F3EF;
+      --warm-white: #FAFAF8;
+      --ink: #1A1917;
+      --ink-soft: #6E6B65;
+      --ink-faint: #A8A49E;
+      --border: #E6E3DD;
+      --coral: #E2603C;
+      --coral-dark: #C94E2E;
+      --coral-glow: rgba(226, 96, 60, 0.12);
+      --green: #5B9A6B;
+      --blue: #4A7FBF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html {
+      scroll-behavior: smooth;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      font-family: 'Instrument Sans', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+
+    /* === GRAIN OVERLAY === */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      opacity: 0.025;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* === HERO === */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      position: relative;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .hero-bg .circle {
+      position: absolute;
+      border-radius: 50%;
+      opacity: 0.04;
+      border: 1px solid var(--ink);
+    }
+
+    .hero-bg .circle:nth-child(1) {
+      width: 600px; height: 600px;
+      top: 10%; left: -10%;
+      animation: float 20s ease-in-out infinite;
+    }
+    .hero-bg .circle:nth-child(2) {
+      width: 400px; height: 400px;
+      bottom: 5%; right: -5%;
+      animation: float 15s ease-in-out infinite reverse;
+    }
+    .hero-bg .circle:nth-child(3) {
+      width: 200px; height: 200px;
+      top: 20%; right: 20%;
+      animation: float 12s ease-in-out infinite 3s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) rotate(0deg); }
+      33% { transform: translate(20px, -30px) rotate(2deg); }
+      66% { transform: translate(-15px, 15px) rotate(-1deg); }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      max-width: 720px;
+    }
+
+    .hero-icon {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 2rem;
+      image-rendering: pixelated;
+      animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(0.5) translateY(20px); }
+    }
+
+    .hero h1 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(4rem, 10vw, 7.5rem);
+      font-weight: 400;
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.8s ease both 0.1s;
+    }
+
+    .hero h1 .dot {
+      color: var(--coral);
+    }
+
+    .hero .tagline {
+      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+      color: var(--ink-soft);
+      line-height: 1.5;
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+      font-weight: 400;
+      animation: fadeUp 0.8s ease both 0.2s;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeUp 0.8s ease both 0.35s;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.85rem 1.75rem;
+      border-radius: 100px;
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--ink);
+      color: var(--cream);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-ghost:hover {
+      border-color: var(--ink-soft);
+      background: var(--warm-white);
+    }
+
+    .install-hint {
+      margin-top: 2rem;
+      animation: fadeUp 0.8s ease both 0.5s;
+    }
+
+    .install-cmd {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--ink);
+      color: var(--ink-faint);
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+    }
+
+    .install-cmd:hover {
+      background: #2a2926;
+    }
+
+    .install-cmd code {
+      color: #e8e4de;
+    }
+
+    .install-cmd .copy-icon {
+      opacity: 0.4;
+      transition: opacity 0.2s;
+    }
+
+    .install-cmd:hover .copy-icon {
+      opacity: 0.8;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--ink-faint);
+      font-size: 0.75rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      animation: bob 2s ease-in-out infinite;
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* === SECTION COMMON === */
+    section {
+      padding: 6rem 2rem;
+    }
+
+    .section-inner {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--coral);
+      margin-bottom: 1rem;
+      font-weight: 500;
+    }
+
+    .section-title {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 400;
+      letter-spacing: -0.03em;
+      margin-bottom: 1rem;
+      line-height: 1.1;
+    }
+
+    .section-subtitle {
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      line-height: 1.6;
+      max-width: 560px;
+      margin-bottom: 3rem;
+    }
+
+    /* === THE PITCH === */
+    .pitch {
+      background: var(--warm-white);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pitch-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1px;
+      background: var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    @media (min-width: 640px) {
+      .pitch-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .pitch-card {
+      background: var(--warm-white);
+      padding: 2rem;
+      position: relative;
+      transition: background 0.3s ease;
+    }
+
+    .pitch-card:hover {
+      background: #FFFFFF;
+    }
+
+    .pitch-card .emoji {
+      font-size: 1.5rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .pitch-card h3 {
+      font-family: 'DM Serif Display', Georgia, serif;
+      font-size: 1.2rem;
+      font-weight: 400;
+      margin-bottom: 0.5rem;
+    }
+
+    .pitch-card p {
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      line-height: 1.55;
+    }
+
+    /* === DEMO SECTION === */
+    .demo {
+      text-align: center;
+    }
+
+    .demo-window {
+      max-width: 800px;
+      margin: 0 auto;
+      background: var(--ink);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow:
+        0 4px 6px rgba(0,0,0,0.04),
+        0 12px 40px rgba(0,0,0,0.12),
+        0 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    .demo-titlebar {
+      height: 40px;
+      background: #2a2926;
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 7px;
+    }
+
+    .demo-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+    }
+
+    .demo-dot:nth-child(1) { background: #FF5F57; }
+    .demo-dot:nth-child(2) { background: #FEBC2E; }
+    .demo-dot:nth-child(3) { background: #28C840; }
+
+    .demo-body {
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      min-height: 320px;
+    }
+
+    .demo-pane {
+      background: #1e1d1b;
+      border-radius: 8px;
+      border: 1px solid #333;
+      padding: 12px;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .demo-pane-header {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2926;
+    }
+
+    .demo-pane-num {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      background: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: #888;
+      font-weight: 600;
+    }
+
+    .demo-pane.active .demo-pane-num {
+      background: var(--coral-glow);
+      color: var(--coral);
+    }
+
+    .demo-pane-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: #666;
+    }
+
+    .demo-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      line-height: 1.7;
+      color: #888;
+      opacity: 0;
+      animation: typeIn 0.3s ease forwards;
+    }
+
+    .demo-line .prompt { color: var(--coral); }
+    .demo-line .cmd { color: #c8c4be; }
+    .demo-line .success { color: var(--green); }
+    .demo-line .file { color: var(--blue); }
+    .demo-line .cursor {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: var(--coral);
+      vertical-align: middle;
+      margin-left: 2px;
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    @keyframes typeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .demo-pane .demo-line:nth-child(2) { animation-delay: 0.3s; }
+    .demo-pane .demo-line:nth-child(3) { animation-delay: 0.6s; }
+    .demo-pane .demo-line:nth-child(4) { animation-delay: 0.9s; }
+    .demo-pane .demo-line:nth-child(5) { animation-delay: 1.2s; }
+    .demo-pane .demo-line:nth-child(6) { animation-delay: 1.5s; }
+
+    /* === SHORTCUTS === */
+    .shortcuts {
+      background: var(--warm-white);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .shortcut-table {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      max-width: 520px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--border);
+    }
+
+    @media (min-width: 640px) {
+      .shortcut-table {
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+      }
+    }
+
+    .shortcut-item {
+      background: var(--warm-white);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      transition: background 0.2s;
+      border: 0.5px solid var(--border);
+    }
+
+    .shortcut-item:hover {
+      background: #fff;
+    }
+
+    .shortcut-item kbd {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .shortcut-item span {
+      font-size: 0.75rem;
+      color: var(--ink-faint);
+    }
+
+    /* === UNDER THE HOOD === */
+    .tech-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .pill {
+      padding: 0.5rem 1rem;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      background: var(--warm-white);
+      color: var(--ink-soft);
+    }
+
+    /* === FINAL CTA === */
+    .cta {
+      text-align: center;
+      padding: 8rem 2rem;
+      position: relative;
+    }
+
+    .cta .section-title {
+      max-width: 480px;
+      margin: 0 auto 1rem;
+    }
+
+    .cta .tagline {
+      color: var(--ink-soft);
+      font-size: 1.05rem;
+      margin-bottom: 2.5rem;
+    }
+
+    /* === FOOTER === */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: var(--ink-faint);
+      font-size: 0.8rem;
+      border-top: 1px solid var(--border);
+    }
+
+    footer a {
+      color: var(--ink-soft);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--ink);
+    }
+
+    /* === RESPONSIVE === */
+    @media (max-width: 640px) {
+      section { padding: 4rem 1.5rem; }
+      .demo-body { grid-template-columns: 1fr; min-height: auto; }
+      .hero h1 { margin-bottom: 1rem; }
+    }
+
+    /* === SCROLL ANIMATIONS === */
+    .reveal {
+      opacity: 0;
+      transform: translateY(32px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+    </div>
+    <div class="hero-content">
+      <img src="icon.png" class="hero-icon" alt="flock icon">
+      <h1>flock<span class="dot">.</span></h1>
+      <p class="tagline">
+        run as many claude code sessions as you want, all at once, in one tiny beautiful window. it's kind of mesmerizing honestly.
+      </p>
+      <div class="hero-actions">
+        <a href="https://github.com/Divagation/flock" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
+        <a href="#features" class="btn btn-ghost">see what it does ↓</a>
+      </div>
+      <div class="install-hint">
+        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew tap divagation/flock && brew install --cask flock'); this.querySelector('.copy-icon').textContent = '✓'; setTimeout(() => this.querySelector('.copy-icon').textContent = '⎘', 1500)">
+          <code>brew install --cask divagation/flock/flock</code>
+          <span class="copy-icon">⎘</span>
+        </button>
+      </div>
+    </div>
+    <div class="scroll-hint">scroll</div>
+  </section>
+
+  <!-- DEMO -->
+  <section class="demo" id="demo">
+    <div class="section-inner reveal">
+      <div class="section-label">what it looks like</div>
+      <div class="section-title" style="text-align:center; margin-left:auto; margin-right:auto;">four claudes, one window</div>
+      <p class="section-subtitle" style="text-align:center; margin-left:auto; margin-right:auto;">
+        you press ⌘T a few times. suddenly they're all working on different things and you're just... watching.
+      </p>
+      <div class="demo-window">
+        <div class="demo-titlebar">
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+          <div class="demo-dot"></div>
+        </div>
+        <div class="demo-body">
+          <div class="demo-pane active">
+            <div class="demo-pane-header">
+              <div class="demo-pane-num">1</div>
+              <div class="demo-pane-label">claude</div>
+            </div>
+            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">refactor auth module</span></div>
+            <div class="demo-line"><span class="file">  reading src/auth/index.ts</span></div>
+            <div class="demo-line"><span class="file">  editing src/auth/jwt.ts</span></div>
+            <div class="demo-line"><span class="success">  ✓ 4 files updated</span></div>
+            <div class="demo-line"><span class="cursor"></span></div>
+          </div>
+          <div class="demo-pane">
+            <div class="demo-pane-header">
+              <div class="demo-pane-num">2</div>
+              <div class="demo-pane-label">claude</div>
+            </div>
+            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">write tests for api</span></div>
+            <div class="demo-line"><span class="file">  reading src/api/routes.ts</span></div>
+            <div class="demo-line"><span class="file">  creating tests/api.test.ts</span></div>
+            <div class="demo-line"><span class="success">  ✓ 12 tests passing</span></div>
+          </div>
+          <div class="demo-pane">
+            <div class="demo-pane-header">
+              <div class="demo-pane-num">3</div>
+              <div class="demo-pane-label">claude</div>
+            </div>
+            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">fix the navbar bug</span></div>
+            <div class="demo-line"><span class="file">  reading components/Nav.tsx</span></div>
+            <div class="demo-line"><span class="success">  ✓ fixed z-index issue</span></div>
+          </div>
+          <div class="demo-pane">
+            <div class="demo-pane-header">
+              <div class="demo-pane-num">4</div>
+              <div class="demo-pane-label">shell</div>
+            </div>
+            <div class="demo-line"><span class="prompt">$</span> <span class="cmd">npm run dev</span></div>
+            <div class="demo-line"><span class="success">  ready on localhost:3000</span></div>
+            <div class="demo-line">  watching for changes...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="pitch" id="features">
+    <div class="section-inner reveal">
+      <div class="section-label">what you get</div>
+      <div class="section-title">everything you need,<br>nothing you don't</div>
+      <p class="section-subtitle">
+        flock does a few things and does them really well. no bloat, no settings rabbit holes, no "coming soon" features.
+      </p>
+      <div class="pitch-grid">
+        <div class="pitch-card">
+          <span class="emoji">🪟</span>
+          <h3>panes that just work</h3>
+          <p>they tile themselves. 1 pane fills the screen, 4 make a grid. split, maximize, navigate. it figures it out.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">🤖</span>
+          <h3>agent mode</h3>
+          <p>throw tasks at a kanban board. watch agents pick them up and work through them in real time, with a live action timeline.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">⌨️</span>
+          <h3>command palette</h3>
+          <p>⌘K opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast you know the vibe.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">📡</span>
+          <h3>broadcast mode</h3>
+          <p>type once, every pane hears it. useful when you want all your claudes to know something at the same time.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">🔍</span>
+          <h3>find everywhere</h3>
+          <p>search inside one pane or across all of them. ⌘F for one, ⌘⇧F for all. simple.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">💾</span>
+          <h3>session restore</h3>
+          <p>close the app, open it later, everything's still there. your layout, your panes, right where you left them.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">🎨</span>
+          <h3>themes</h3>
+          <p>because life's too short for one color scheme. switch from the command palette whenever the mood strikes.</p>
+        </div>
+        <div class="pitch-card">
+          <span class="emoji">🔔</span>
+          <h3>notifications</h3>
+          <p>flock taps you on the shoulder when an agent finishes something. go get coffee, it'll let you know.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SHORTCUTS -->
+  <section class="shortcuts">
+    <div class="section-inner reveal">
+      <div class="section-label">keyboard-first</div>
+      <div class="section-title">your hands never<br>leave the keys</div>
+      <p class="section-subtitle">
+        every action has a shortcut. here are the ones you'll use most.
+      </p>
+      <div class="shortcut-table">
+        <div class="shortcut-item"><kbd>⌘T</kbd><span>new claude</span></div>
+        <div class="shortcut-item"><kbd>⌘⇧T</kbd><span>new shell</span></div>
+        <div class="shortcut-item"><kbd>⌘W</kbd><span>close pane</span></div>
+        <div class="shortcut-item"><kbd>⌘↩</kbd><span>maximize</span></div>
+        <div class="shortcut-item"><kbd>⌘K</kbd><span>palette</span></div>
+        <div class="shortcut-item"><kbd>⌘D</kbd><span>split</span></div>
+        <div class="shortcut-item"><kbd>⌘⇧A</kbd><span>agent mode</span></div>
+        <div class="shortcut-item"><kbd>⌘⇧B</kbd><span>broadcast</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TECH -->
+  <section class="tech">
+    <div class="section-inner reveal">
+      <div class="section-label">under the hood</div>
+      <div class="section-title">native swift.<br>no electron. ever.</div>
+      <p class="section-subtitle">
+        each pane is a real terminal powered by SwiftTerm. agent mode talks to claude code over stream-json and parses every event in real time. it's fast because it's not pretending to be a website.
+      </p>
+      <div class="tech-pills">
+        <span class="pill">Swift 5.9</span>
+        <span class="pill">AppKit</span>
+        <span class="pill">SwiftTerm</span>
+        <span class="pill">macOS 13+</span>
+        <span class="pill">stream-json</span>
+        <span class="pill">zero web views</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="section-inner reveal">
+      <img src="icon.png" style="width:64px;height:64px;image-rendering:pixelated;margin-bottom:1.5rem;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.08));" alt="">
+      <div class="section-title">let your agents loose</div>
+      <p class="tagline">install flock in 10 seconds and see what happens when your claudes work together.</p>
+      <div class="hero-actions">
+        <a href="https://github.com/Divagation/flock" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          get flock
+        </a>
+      </div>
+      <div class="install-hint" style="margin-top:1.5rem;">
+        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew tap divagation/flock && brew install --cask flock'); this.querySelector('.copy-icon').textContent = '✓'; setTimeout(() => this.querySelector('.copy-icon').textContent = '⎘', 1500)">
+          <code>brew install --cask divagation/flock/flock</code>
+          <span class="copy-icon">⎘</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>made by <a href="https://github.com/Divagation">divagation</a></p>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('visible');
+        }
+      });
+    }, { threshold: 0.15 });
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
