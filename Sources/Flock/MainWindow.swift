@@ -5,6 +5,7 @@ class FlockWindow: NSWindow {
     let tabBar: TabBarView
     let gridContainer: GridContainer
     let statusBar: StatusBarView
+    let agentModeView: AgentModeView
     let rootView: FlockRootView
 
     init(paneManager: PaneManager) {
@@ -12,6 +13,7 @@ class FlockWindow: NSWindow {
         self.tabBar = TabBarView(paneManager: paneManager)
         self.gridContainer = GridContainer(paneManager: paneManager)
         self.statusBar = StatusBarView(paneManager: paneManager)
+        self.agentModeView = AgentModeView()
         self.rootView = FlockRootView()
 
         // Screen-relative sizing: 80% of main screen
@@ -29,6 +31,7 @@ class FlockWindow: NSWindow {
         paneManager.tabBar = tabBar
         paneManager.gridContainer = gridContainer
         paneManager.statusBar = statusBar
+        paneManager.agentModeView = agentModeView
 
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
@@ -48,6 +51,9 @@ class FlockWindow: NSWindow {
         rootView.addSubview(tabBar)
         rootView.addSubview(gridContainer)
         rootView.addSubview(statusBar)
+        rootView.agentModeView = agentModeView
+        rootView.addSubview(agentModeView)
+        agentModeView.isHidden = true
         contentView = rootView
     }
 
@@ -60,6 +66,7 @@ class FlockRootView: NSView {
     weak var tabBar: NSView?
     weak var gridContainer: NSView?
     weak var statusBar: NSView?
+    weak var agentModeView: NSView?
     let tabBarEffectView: NSVisualEffectView = {
         let v = NSVisualEffectView(frame: .zero)
         v.material = .titlebar
@@ -88,7 +95,16 @@ class FlockRootView: NSView {
 
         tabBarEffectView.frame = NSRect(x: 0, y: 0, width: w, height: tabH)
         tabBar?.frame       = NSRect(x: 0, y: 0, width: w, height: tabH)
-        gridContainer?.frame = NSRect(x: 0, y: tabH, width: w, height: h - tabH - statusH)
+        // Agent mode: swap grid for agent dashboard
+        if let window = window as? FlockWindow, window.paneManager.isAgentMode {
+            gridContainer?.isHidden = true
+            agentModeView?.isHidden = false
+            agentModeView?.frame = NSRect(x: 0, y: tabH, width: w, height: h - tabH - statusH)
+        } else {
+            gridContainer?.isHidden = false
+            agentModeView?.isHidden = true
+            gridContainer?.frame = NSRect(x: 0, y: tabH, width: w, height: h - tabH - statusH)
+        }
         statusBar?.frame    = NSRect(x: 0, y: h - statusH, width: w, height: statusH)
     }
 }

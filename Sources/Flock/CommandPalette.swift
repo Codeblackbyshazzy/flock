@@ -148,6 +148,9 @@ class CommandPalette {
             CommandAction(name: "Toggle Broadcast", shortcut: "⌘⇧B", category: "View") { [weak self] in
                 self?.paneManager?.toggleBroadcast()
             },
+            CommandAction(name: "Toggle Agent Mode", shortcut: "⌘⇧A", category: "View") { [weak self] in
+                self?.paneManager?.toggleAgentMode()
+            },
             CommandAction(name: "Split Horizontal", shortcut: "⌘D", category: "Panes") { [weak self] in
                 self?.paneManager?.splitActivePane(direction: .horizontal)
             },

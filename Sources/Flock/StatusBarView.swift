@@ -41,7 +41,11 @@ class StatusBarView: NSView {
 
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
                                                name: Theme.themeDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(taskStoreChanged),
+                                               name: TaskStore.didChange, object: nil)
     }
+
+    @objc private func taskStoreChanged() { update() }
 
     @objc private func themeChanged() {
         layer?.backgroundColor = Theme.chrome.cgColor
@@ -54,8 +58,17 @@ class StatusBarView: NSView {
 
     func update() {
         guard let mgr = paneManager else { return }
-        let n = mgr.panes.count
-        let newText = n == 0 ? "" : n == 1 ? "1 session" : "\(n) sessions"
+
+        let newText: String
+        if mgr.isAgentMode {
+            let running = AgentRunner.shared.activeCount
+            let queued = TaskStore.shared.backlog.count
+            let done = TaskStore.shared.done.count
+            newText = "\(running) running  \(queued) queued  \(done) done"
+        } else {
+            let n = mgr.panes.count
+            newText = n == 0 ? "" : n == 1 ? "1 session" : "\(n) sessions"
+        }
 
         if newText != lastText && !lastText.isEmpty {
             NSAnimationContext.runAnimationGroup({ ctx in

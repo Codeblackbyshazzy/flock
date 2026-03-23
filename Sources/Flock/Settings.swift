@@ -21,6 +21,7 @@ class Settings {
         case globalHotkeyEnabled
         case globalHotkeyKeyCode
         case globalHotkeyModifiers
+        case maxParallelAgents
     }
 
     var themeId: String {
@@ -81,6 +82,14 @@ class Settings {
             return v > 0 ? UInt(v) : NSEvent.ModifierFlags.control.rawValue
         }
         set { defaults.set(Int(newValue), forKey: Key.globalHotkeyModifiers.rawValue); post(.globalHotkeyModifiers) }
+    }
+
+    var maxParallelAgents: Int {
+        get {
+            let v = defaults.integer(forKey: Key.maxParallelAgents.rawValue)
+            return v > 0 ? v : 3
+        }
+        set { defaults.set(newValue, forKey: Key.maxParallelAgents.rawValue); post(.maxParallelAgents) }
     }
 
     // ANSI color overrides per theme

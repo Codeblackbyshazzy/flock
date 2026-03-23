@@ -9,11 +9,21 @@ enum ShellEnhancer {
         if let bundled = Bundle.main.path(forResource: "zsh-autosuggestions", ofType: "zsh") {
             return bundled
         }
-        // Fallback: look relative to executable
+        // Fallback: look relative to executable (handles both .app bundle and direct binary)
         let execDir = (ProcessInfo.processInfo.arguments[0] as NSString).deletingLastPathComponent
         let relative = (execDir as NSString).appendingPathComponent("../Resources/zsh-autosuggestions.zsh")
         if FileManager.default.fileExists(atPath: relative) {
             return relative
+        }
+        // When running via CLI symlink (.build/release/Flock), look at project root Resources/
+        let resolvedExec = (ProcessInfo.processInfo.arguments[0] as NSString).resolvingSymlinksInPath
+        let resolvedDir = (resolvedExec as NSString).deletingLastPathComponent
+        for ancestor in ["../../Resources/zsh-autosuggestions.zsh", "../../../Resources/zsh-autosuggestions.zsh"] {
+            let path = (resolvedDir as NSString).appendingPathComponent(ancestor)
+            let resolved = (path as NSString).standardizingPath
+            if FileManager.default.fileExists(atPath: resolved) {
+                return resolved
+            }
         }
         return nil
     }

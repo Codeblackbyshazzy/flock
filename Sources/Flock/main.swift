@@ -31,6 +31,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             paneManager.addPane(type: .claude)
         }
 
+        // Restore agent tasks (mark stale in-progress as interrupted)
+        TaskStore.shared.restore()
+        for task in TaskStore.shared.inProgress {
+            TaskStore.shared.markFailed(task, error: "Interrupted by app restart")
+        }
+
         // Global hotkey
         if Settings.shared.globalHotkeyEnabled {
             hotkeyManager = GlobalHotkeyManager(window: mainWindow)
@@ -45,6 +51,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         paneManager.saveSession()
+        AgentRunner.shared.cancelAll()
+        TaskStore.shared.save()
         return .terminateNow
     }
 
@@ -88,6 +96,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func toggleBroadcast(_ sender: Any?) {
         paneManager.toggleBroadcast()
+    }
+
+    @objc func toggleAgentMode(_ sender: Any?) {
+        paneManager.toggleAgentMode()
     }
 
     @objc func splitHorizontal(_ sender: Any?) {
@@ -146,6 +158,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
             key: "k", target: target)
     addItem(viewMenu, "Toggle Broadcast", #selector(AppDelegate.toggleBroadcast(_:)),
             key: "b", mods: [.command, .shift], target: target)
+    addItem(viewMenu, "Toggle Agent Mode", #selector(AppDelegate.toggleAgentMode(_:)),
+            key: "a", mods: [.command, .shift], target: target)
 
     // -- Pane menu --
     let paneItem = NSMenuItem(); main.addItem(paneItem)

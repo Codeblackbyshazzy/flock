@@ -5,6 +5,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
     private var hoveredTab: Int = -1
     private var hoveredClose: Bool = false
     private var hoveredButton: Int = -1
+    private var hoveredAgentButton: Bool = false
     private var trackingArea: NSTrackingArea?
 
     private var editField: NSTextField?
@@ -295,16 +296,19 @@ class TabBarView: NSView, NSTextFieldDelegate {
         )
     }
 
-    private func buttonFrames() -> (claude: CGRect, shell: CGRect) {
+    private func buttonFrames() -> (claude: CGRect, shell: CGRect, agentMode: CGRect) {
         let btnH: CGFloat = 26
         let y = contentCenterY - btnH / 2
+        let agentSize: CGFloat = 26
         let shellW = "+ shell".size(withAttributes: [.font: Theme.Typo.button]).width + 20
         let claudeW = "+ claude".size(withAttributes: [.font: Theme.Typo.button]).width + 20
-        let shellX = bounds.width - shellW - Theme.Space.lg
+        let agentX = bounds.width - agentSize - Theme.Space.lg
+        let shellX = agentX - shellW - Theme.Space.sm
         let claudeX = shellX - claudeW - Theme.Space.sm
         return (
             CGRect(x: claudeX, y: y, width: claudeW, height: btnH),
-            CGRect(x: shellX, y: y, width: shellW, height: btnH)
+            CGRect(x: shellX, y: y, width: shellW, height: btnH),
+            CGRect(x: agentX, y: y, width: agentSize, height: agentSize)
         )
     }
 
@@ -427,6 +431,9 @@ class TabBarView: NSView, NSTextFieldDelegate {
         let btns = buttonFrames()
         drawActionButton(ctx: ctx, rect: btns.claude, title: "+ claude", hovered: hoveredButton == 0)
         drawActionButton(ctx: ctx, rect: btns.shell, title: "+ shell", hovered: hoveredButton == 1)
+
+        // Agent mode toggle button
+        drawAgentModeButton(ctx: ctx, rect: btns.agentMode, active: mgr.isAgentMode, hovered: hoveredAgentButton)
     }
 
     private func drawGradientDivider(ctx: CGContext, y: CGFloat, width: CGFloat) {
@@ -465,6 +472,50 @@ class TabBarView: NSView, NSTextFieldDelegate {
             at: NSPoint(x: rect.midX - sz.width / 2, y: rect.midY - sz.height / 2),
             withAttributes: attrs
         )
+    }
+
+    private func drawAgentModeButton(ctx: CGContext, rect: CGRect, active: Bool, hovered: Bool) {
+        let path = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
+        if hovered {
+            Theme.hover.setFill()
+            path.fill()
+        }
+        // Subtle border
+        Theme.divider.setStroke()
+        path.lineWidth = 0.5
+        path.stroke()
+
+        let color = (hovered || active) ? Theme.textPrimary : Theme.textTertiary
+        ctx.setStrokeColor(color.cgColor)
+        ctx.setLineWidth(1.2)
+        ctx.setLineCap(.round)
+
+        let cx = rect.midX
+        let cy = rect.midY
+
+        if active {
+            // Grid icon (2x2 squares) — representing terminal grid / agent mode ON
+            let s: CGFloat = 3.5
+            let gap: CGFloat = 1.5
+            // Top-left square
+            ctx.stroke(CGRect(x: cx - s - gap / 2, y: cy - s - gap / 2, width: s, height: s))
+            // Top-right square
+            ctx.stroke(CGRect(x: cx + gap / 2, y: cy - s - gap / 2, width: s, height: s))
+            // Bottom-left square
+            ctx.stroke(CGRect(x: cx - s - gap / 2, y: cy + gap / 2, width: s, height: s))
+            // Bottom-right square
+            ctx.stroke(CGRect(x: cx + gap / 2, y: cy + gap / 2, width: s, height: s))
+        } else {
+            // Columns icon (3 vertical lines) — representing kanban / agent mode OFF
+            let lineH: CGFloat = 8
+            let spacing: CGFloat = 4
+            for i in -1...1 {
+                let lx = cx + CGFloat(i) * spacing
+                ctx.move(to: CGPoint(x: lx, y: cy - lineH / 2))
+                ctx.addLine(to: CGPoint(x: lx, y: cy + lineH / 2))
+            }
+            ctx.strokePath()
+        }
     }
 
     // MARK: - Inline rename
@@ -562,6 +613,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         let btns = buttonFrames()
         if btns.claude.contains(pt) { mgr.addPane(type: .claude) }
         else if btns.shell.contains(pt) { mgr.addPane(type: .shell) }
+        else if btns.agentMode.contains(pt) { mgr.toggleAgentMode() }
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -737,14 +789,17 @@ class TabBarView: NSView, NSTextFieldDelegate {
         }
 
         var newBtn = -1
+        var newAgentHover = false
         let btns = buttonFrames()
         if btns.claude.contains(pt) { newBtn = 0 }
         else if btns.shell.contains(pt) { newBtn = 1 }
+        else if btns.agentMode.contains(pt) { newAgentHover = true }
 
         let tabChanged = newTab != hoveredTab
         hoveredTab = newTab
         hoveredClose = newClose
         hoveredButton = newBtn
+        hoveredAgentButton = newAgentHover
 
         if tabChanged {
             startHoverAnimation()
@@ -758,6 +813,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         hoveredTab = -1
         hoveredClose = false
         hoveredButton = -1
+        hoveredAgentButton = false
         if tabChanged { startHoverAnimation() }
         needsDisplay = true
     }
