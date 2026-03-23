@@ -20,16 +20,23 @@ class CompressionStatsPanel: NSView {
 
     // MARK: - Show
 
+    /// Currently visible panel (one at a time)
+    private static weak var activePanel: NSPanel?
+
     static func show(on window: NSWindow, paneManager: PaneManager) {
+        // Close existing if already open
+        activePanel?.close()
+
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 440, height: 480),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .nonactivatingPanel],
             backing: .buffered,
             defer: true
         )
         panel.title = "Compression Stats"
-        panel.isFloatingPanel = false
-        panel.becomesKeyOnlyIfNeeded = false
+        panel.isFloatingPanel = true
+        panel.hidesOnDeactivate = false
+        panel.level = .floating
 
         let view = CompressionStatsPanel(frame: NSRect(x: 0, y: 0, width: 440, height: 480))
         view.panel = panel
@@ -37,21 +44,17 @@ class CompressionStatsPanel: NSView {
         view.paneManager = paneManager
         panel.contentView = view
 
-        // Handle close button: endSheet so the host window unblocks
-        let delegate = SheetCloseDelegate(window: window, panel: panel, onClose: { view.cleanup() })
-        panel.delegate = delegate
-        view.sheetDelegate = delegate
-
         view.refreshStats()
         view.startRefreshTimer()
 
-        window.beginSheet(panel) { _ in
-            view.cleanup()
-        }
+        // Center over the host window
+        let winFrame = window.frame
+        let x = winFrame.midX - 220
+        let y = winFrame.midY - 240
+        panel.setFrameOrigin(NSPoint(x: x, y: y))
+        panel.makeKeyAndOrderFront(nil)
+        activePanel = panel
     }
-
-    // Strong ref so the delegate stays alive while the sheet is open
-    private var sheetDelegate: SheetCloseDelegate?
 
     // MARK: - Init
 
@@ -310,29 +313,5 @@ class CompressionStatsPanel: NSView {
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = ","
         return formatter.string(from: NSNumber(value: n)) ?? "\(n)"
-    }
-}
-
-// MARK: - Sheet close delegate
-
-/// Intercepts the close button on a sheet panel and calls endSheet
-/// so the host window actually unblocks.
-private class SheetCloseDelegate: NSObject, NSWindowDelegate {
-    private weak var window: NSWindow?
-    private weak var panel: NSPanel?
-    private let onClose: () -> Void
-
-    init(window: NSWindow, panel: NSPanel, onClose: @escaping () -> Void) {
-        self.window = window
-        self.panel = panel
-        self.onClose = onClose
-    }
-
-    func windowShouldClose(_ sender: NSWindow) -> Bool {
-        onClose()
-        if let panel, let window {
-            window.endSheet(panel)
-        }
-        return false  // endSheet handles removal
     }
 }
