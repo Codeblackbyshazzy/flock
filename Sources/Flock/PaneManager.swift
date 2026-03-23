@@ -106,7 +106,7 @@ class PaneManager {
         if panes.isEmpty {
             activePaneIndex = -1
         } else {
-            activePaneIndex = min(activePaneIndex, panes.count - 1)
+            activePaneIndex = max(0, min(activePaneIndex, panes.count - 1))
             panes[activePaneIndex].isFocused = true
             panes[activePaneIndex].terminalView.window?.makeFirstResponder(panes[activePaneIndex].terminalView)
         }

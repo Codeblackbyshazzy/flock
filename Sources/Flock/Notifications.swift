@@ -6,7 +6,8 @@ enum FlockNotifications {
 
     /// True when running inside a .app bundle (UNUserNotificationCenter requires this)
     private static var isAvailable: Bool {
-        Bundle.main.bundleIdentifier != nil
+        guard let id = Bundle.main.bundleIdentifier, !id.isEmpty else { return false }
+        return Bundle.main.bundlePath.hasSuffix(".app")
     }
 
     static func requestPermission() {
