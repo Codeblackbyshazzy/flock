@@ -469,6 +469,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
     // MARK: - Inline rename
 
+    func renameActiveTab() {
+        guard let mgr = paneManager, mgr.activePaneIndex >= 0 else { return }
+        beginRename(at: mgr.activePaneIndex)
+    }
+
     private func beginRename(at index: Int) {
         guard let mgr = paneManager, index < mgr.tabNodes.count else { return }
         let frames = tabFrames()

@@ -13,6 +13,7 @@ struct CommandAction {
 
 class CommandPalette {
     weak var paneManager: PaneManager?
+    weak var window: NSWindow?
 
     private var backdropView: CommandBackdropView?
     private var cardView: CommandCardView?
@@ -134,9 +135,16 @@ class CommandPalette {
             CommandAction(name: "Maximize / Restore", shortcut: "⌘↩", category: "View") { [weak self] in
                 self?.paneManager?.toggleMaximize()
             },
-            CommandAction(name: "Rename Tab", shortcut: "", category: "Panes") { /* wired up in main */ },
-            CommandAction(name: "Preferences", shortcut: "⌘,", category: "View") { /* wired up in main */ },
-            CommandAction(name: "Find in Terminal", shortcut: "⌘F", category: "View") { /* wired up in main */ },
+            CommandAction(name: "Rename Tab", shortcut: "", category: "Panes") { [weak self] in
+                self?.paneManager?.tabBar?.renameActiveTab()
+            },
+            CommandAction(name: "Preferences", shortcut: "⌘,", category: "View") { [weak self] in
+                guard let win = self?.window else { return }
+                PreferencesView.show(on: win)
+            },
+            CommandAction(name: "Find in Terminal", shortcut: "⌘F", category: "View") { [weak self] in
+                self?.paneManager?.showFindBar()
+            },
             CommandAction(name: "Toggle Broadcast", shortcut: "⌘⇧B", category: "View") { [weak self] in
                 self?.paneManager?.toggleBroadcast()
             },
@@ -158,7 +166,23 @@ class CommandPalette {
             CommandAction(name: "3-up", shortcut: "", category: "Layout") { [weak self] in
                 self?.applyPreset(LayoutPresets.all[3])
             },
-        ] + Themes.all.map { theme in
+            CommandAction(name: "Navigate Left", shortcut: "⌘←", category: "Panes") { [weak self] in
+                self?.paneManager?.navigateDirection(.left)
+            },
+            CommandAction(name: "Navigate Right", shortcut: "⌘→", category: "Panes") { [weak self] in
+                self?.paneManager?.navigateDirection(.right)
+            },
+            CommandAction(name: "Navigate Up", shortcut: "⌘↑", category: "Panes") { [weak self] in
+                self?.paneManager?.navigateDirection(.up)
+            },
+            CommandAction(name: "Navigate Down", shortcut: "⌘↓", category: "Panes") { [weak self] in
+                self?.paneManager?.navigateDirection(.down)
+            },
+        ] + (1...9).map { i in
+            CommandAction(name: "Focus Pane \(i)", shortcut: "⌘\(i)", category: "Panes") { [weak self] in
+                self?.paneManager?.focusPane(at: i - 1)
+            }
+        } + Themes.all.map { theme in
             CommandAction(name: "Theme: \(theme.name)", shortcut: "", category: "Appearance") {
                 Settings.shared.themeId = theme.id
                 Theme.active = theme

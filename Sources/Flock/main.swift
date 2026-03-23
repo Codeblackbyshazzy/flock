@@ -21,6 +21,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Wire up command palette
         commandPalette.paneManager = paneManager
+        commandPalette.window = mainWindow
 
         // Session restore or first pane
         if Settings.shared.startupBehavior == .restoreLastSession {
