@@ -21,21 +21,21 @@ or grab the `.zip` from [releases](https://github.com/Divagation/flock/releases)
 
 ## what you get
 
-🪟 **panes that just work** — they tile themselves. 1 pane fills the screen, 2 panes split in half, 4 make a grid. it figures it out. split horizontal, split vertical, maximize one — whatever you want.
+**panes that just work** — they tile themselves. 1 pane fills the screen, 2 panes split in half, 4 make a grid. it figures it out. split horizontal, split vertical, maximize one — whatever you want.
 
-🤖 **agent mode** — this is the fun one. hit `⌘⇧A` and flock becomes a task manager. throw tasks at it, watch them flow across a kanban board (backlog → in progress → done). each agent gets a live timeline showing every file it reads, every edit it makes, every command it runs.
+**agent mode** — this is the fun one. hit `⌘⇧A` and flock becomes a task manager. throw tasks at it, watch them flow across a kanban board (backlog → in progress → done). each agent gets a live timeline showing every file it reads, every edit it makes, every command it runs.
 
-⌨️ **command palette** — `⌘K` opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast or arc you already know how this works.
+**command palette** — `⌘K` opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast or arc you already know how this works.
 
-📡 **broadcast mode** — type once, every pane hears it. useful for when you want all your claudes to know something at the same time.
+**broadcast mode** — type once, every pane hears it. useful for when you want all your claudes to know something at the same time.
 
-🔍 **find everywhere** — search inside one pane or across all of them at once.
+**find everywhere** — search inside one pane or across all of them at once.
 
-💾 **session restore** — close the app, open it later, everything's still there.
+**session restore** — close the app, open it later, everything's still there.
 
-🎨 **themes** — because life's too short for one color scheme.
+**themes** — because life's too short for one color scheme.
 
-🔔 **notifications** — flock taps you on the shoulder when an agent finishes something.
+**notifications** — flock taps you on the shoulder when an agent finishes something.
 
 <br>
 
