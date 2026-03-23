@@ -6,6 +6,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var mainWindow: FlockWindow!
     var paneManager: PaneManager!
     lazy var commandPalette = CommandPalette()
+    let memorySidebar = MemorySidebar()
     var hotkeyManager: GlobalHotkeyManager?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -67,6 +68,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         paneManager.saveSession()
         AgentRunner.shared.cancelAll()
         TaskStore.shared.save()
+        MemoryStore.shared.save()
         return .terminateNow
     }
 
@@ -127,6 +129,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func splitVertical(_ sender: Any?) {
         paneManager.splitActivePane(direction: .vertical)
     }
+
+    @objc func toggleMemory(_ sender: Any?) {
+        memorySidebar.toggle(in: mainWindow)
+    }
 }
 
 // MARK: - Menu construction
@@ -180,6 +186,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
             key: "b", mods: [.command, .shift], target: target)
     addItem(viewMenu, "Toggle Agent Mode", #selector(AppDelegate.toggleAgentMode(_:)),
             key: "a", mods: [.command, .shift], target: target)
+    addItem(viewMenu, "Toggle Memory", #selector(AppDelegate.toggleMemory(_:)),
+            key: "m", mods: [.command, .shift], target: target)
 
     // -- Pane menu --
     let paneItem = NSMenuItem(); main.addItem(paneItem)

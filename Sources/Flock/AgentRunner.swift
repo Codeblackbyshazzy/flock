@@ -268,6 +268,15 @@ final class AgentRunner {
             TaskStore.shared.markFailed(task, error: result.text ?? "Unknown error")
         } else {
             TaskStore.shared.markDone(task, summary: result.text, cost: result.costUsd)
+
+            // Auto-capture task summary to memory
+            if Settings.shared.memoryEnabled, let summary = result.text, !summary.isEmpty {
+                MemoryStore.shared.addTaskSummary(
+                    taskTitle: task.title,
+                    summary: summary,
+                    cost: result.costUsd
+                )
+            }
         }
 
         scheduleNext()

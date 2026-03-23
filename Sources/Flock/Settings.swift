@@ -22,6 +22,8 @@ class Settings {
         case globalHotkeyKeyCode
         case globalHotkeyModifiers
         case maxParallelAgents
+        case compressionEnabled
+        case memoryEnabled
     }
 
     var themeId: String {
@@ -90,6 +92,22 @@ class Settings {
             return v > 0 ? v : 3
         }
         set { defaults.set(newValue, forKey: Key.maxParallelAgents.rawValue); post(.maxParallelAgents) }
+    }
+
+    var compressionEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.compressionEnabled.rawValue) == nil { return true }
+            return defaults.bool(forKey: Key.compressionEnabled.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.compressionEnabled.rawValue); post(.compressionEnabled) }
+    }
+
+    var memoryEnabled: Bool {
+        get {
+            if defaults.object(forKey: Key.memoryEnabled.rawValue) == nil { return true }
+            return defaults.bool(forKey: Key.memoryEnabled.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.memoryEnabled.rawValue); post(.memoryEnabled) }
     }
 
     // ANSI color overrides per theme

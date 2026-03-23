@@ -24,6 +24,9 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     let outputParser = ClaudeOutputParser()
     private(set) var agentState: AgentState = .idle
 
+    // Compression layer (all panes)
+    let compressor = PTYStreamCompressor()
+
     // Process title tracking
     var processTitle: String?
 
@@ -48,6 +51,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     private let paneTitleBar = NSView(frame: .zero)
     private let titleProcessLabel = NSTextField(labelWithString: "")
     private let titleCwdLabel = NSTextField(labelWithString: "")
+    private let compressionGaugeLabel = NSTextField(labelWithString: "")
     private let titleBarHeight: CGFloat = 24
 
     var isFocused: Bool = false {
@@ -129,13 +133,31 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         titleCwdLabel.lineBreakMode = .byTruncatingMiddle
         paneTitleBar.addSubview(titleCwdLabel)
 
+        // Compression gauge (shows "Compressed: N%" when active)
+        compressionGaugeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 9.5, weight: .medium)
+        compressionGaugeLabel.textColor = Theme.accent
+        compressionGaugeLabel.alignment = .center
+        compressionGaugeLabel.isBezeled = false
+        compressionGaugeLabel.drawsBackground = false
+        compressionGaugeLabel.isEditable = false
+        compressionGaugeLabel.isHidden = true
+        paneTitleBar.addSubview(compressionGaugeLabel)
+
         updateTitleBar()
+
+        // Compression stats callback
+        compressor.onStatsUpdate = { [weak self] stats in
+            guard let self else { return }
+            self.updateCompressionGauge(stats)
+            self.manager?.statusBar?.update()
+        }
 
         // Agent state parser
         outputParser.onStateChange = { [weak self] state in
             guard let self else { return }
             let oldState = self.agentState
             self.agentState = state
+
             self.updateTitleBar()
             self.manager?.tabBar?.update()
             self.manager?.statusBar?.update()
@@ -177,6 +199,12 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         }
 
         if type == .claude {
+            // Write memory context file before launching Claude
+            if Settings.shared.memoryEnabled {
+                let contextDir = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
+                MemoryStore.shared.writeContextFile(to: contextDir)
+            }
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 guard let self else { return }
                 self.sendText(self.shouldResume ? "claude --resume\n" : "claude\n")
@@ -239,6 +267,26 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
             titleCwdLabel.stringValue = dir.hasPrefix(home) ? "~" + dir.dropFirst(home.count) : dir
         } else {
             titleCwdLabel.stringValue = ""
+        }
+    }
+
+    // MARK: - Compression gauge
+
+    private func updateCompressionGauge(_ stats: CompressionStats) {
+        let pct = stats.percentSaved
+        if pct > 0 && stats.rawBytes > 500 {
+            compressionGaugeLabel.isHidden = false
+            compressionGaugeLabel.stringValue = "\u{25C9} \(pct)%"
+            // Color ramp: low=subtle, high=green
+            if pct >= 40 {
+                compressionGaugeLabel.textColor = NSColor(hex: 0x30D158)  // green
+            } else if pct >= 20 {
+                compressionGaugeLabel.textColor = Theme.accent
+            } else {
+                compressionGaugeLabel.textColor = Theme.textTertiary
+            }
+        } else {
+            compressionGaugeLabel.isHidden = true
         }
     }
 
@@ -379,7 +427,10 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         // Vertically center the labels in the title bar
         let labelH: CGFloat = 16
         let labelY = (titleBarHeight - labelH) / 2
+        let gaugeW: CGFloat = compressionGaugeLabel.isHidden ? 0 : 52
+        let gaugeGap: CGFloat = compressionGaugeLabel.isHidden ? 0 : 4
         titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: paneTitleBar.bounds.width / 2 - 12, height: labelH)
+        compressionGaugeLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2 - gaugeW - gaugeGap, y: labelY, width: gaugeW, height: labelH)
         titleCwdLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2, y: labelY, width: paneTitleBar.bounds.width / 2 - 8, height: labelH)
         // Terminal inner padding: 8px on left, right, and bottom
         let pad: CGFloat = 8

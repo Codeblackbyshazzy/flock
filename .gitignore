@@ -11,3 +11,6 @@ icon.iconset/
 
 # Release artifacts
 *.zip
+
+# Flock memory context (auto-generated)
+.flock-context.md

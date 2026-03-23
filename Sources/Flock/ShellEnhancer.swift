@@ -66,6 +66,11 @@ enum ShellEnhancer {
         env["COLORTERM"] = "truecolor"
         env["TERM_PROGRAM"] = "Flock"
         env["TERM_PROGRAM_VERSION"] = "1.0"
+        // Compression manifest — agents can detect compressed environment
+        if Settings.shared.compressionEnabled {
+            env["FLOCK_COMPRESSION"] = "1"
+            env["FLOCK_COMPRESSION_LEVEL"] = "2"
+        }
         if let dir = workingDirectory {
             env["HOME_OVERRIDE"] = dir  // not used, just for reference
         }

@@ -149,7 +149,7 @@ final class ClaudeOutputParser {
         }
 
         // Reading
-        if hasWord(text, "Reading") || hasWord(text, "Searching")
+        if text.contains("Reading") || text.contains("Searching")
             || text.contains("Searched") || text.contains("Queried")
             || text.contains("Grep(") || text.contains("Read(")
             || text.contains("glob(") || text.contains("finder(") {
@@ -162,7 +162,7 @@ final class ClaudeOutputParser {
         }
 
         // Text-based thinking
-        if hasWord(text, "Thinking") || hasWord(text, "Reasoning")
+        if text.contains("Thinking") || text.contains("Reasoning")
             || text.contains("Thought for") || text.contains("Resolving") {
             return .thinking
         }
@@ -179,17 +179,6 @@ final class ClaudeOutputParser {
             }
         }
         return false
-    }
-
-    /// Check for a whole word (not substring of another word)
-    private func hasWord(_ text: String, _ word: String) -> Bool {
-        guard let range = text.range(of: word) else { return false }
-        // Check character after the match isn't a lowercase letter (avoids false positives)
-        if range.upperBound < text.endIndex {
-            let next = text[range.upperBound]
-            if next.isLowercase { return false }
-        }
-        return true
     }
 
     // MARK: - Idle Timer

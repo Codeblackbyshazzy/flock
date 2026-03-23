@@ -13,12 +13,13 @@ class PreferencesView: NSView {
     private let launchControl = NSSegmentedControl()
     private let activitySwitch = NSSwitch()
     private let soundSwitch = NSSwitch()
+    private let memorySwitch = NSSwitch()
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     // MARK: - Layout Constants
 
     private let panelWidth: CGFloat = 480
-    private let panelHeight: CGFloat = 420
+    private let panelHeight: CGFloat = 480
     private let labelX: CGFloat = 24
     private let controlX: CGFloat = 160
     private let controlWidth: CGFloat = 200
@@ -30,7 +31,7 @@ class PreferencesView: NSView {
 
     static func show(on window: NSWindow) {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 420),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 480),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: true
@@ -39,7 +40,7 @@ class PreferencesView: NSView {
         panel.isFloatingPanel = false
         panel.becomesKeyOnlyIfNeeded = false
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 420))
+        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 480))
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
@@ -182,6 +183,27 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // ── Memory ──
+        y += sectionGap - rowHeight
+        y = addSectionHeader("Memory", y: y)
+
+        y = addRow(y: y)
+        addLabel("AI Memory", y: y)
+
+        memorySwitch.state = settings.memoryEnabled ? .on : .off
+        memorySwitch.target = self
+        memorySwitch.action = #selector(memoryChanged(_:))
+        memorySwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(memorySwitch)
+
+        let memoryHint = NSTextField(labelWithString: "Auto-captures task summaries, writes .flock-context.md")
+        memoryHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        memoryHint.textColor = Theme.textTertiary
+        memoryHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 240, height: 14)
+        addSubview(memoryHint)
+
+        y += rowHeight
+
         // ── Done Button ──
         let btnWidth: CGFloat = 72
         let btnHeight: CGFloat = 28
@@ -262,6 +284,10 @@ class PreferencesView: NSView {
 
     @objc private func soundChanged(_ sender: NSSwitch) {
         Settings.shared.soundEffectsEnabled = (sender.state == .on)
+    }
+
+    @objc private func memoryChanged(_ sender: NSSwitch) {
+        Settings.shared.memoryEnabled = (sender.state == .on)
     }
 
     @objc private func done(_ sender: Any) {
