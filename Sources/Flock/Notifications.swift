@@ -38,30 +38,44 @@ enum FlockNotifications {
     }
 
     static func sendCompletion(paneName: String, paneIndex: Int, duration: TimeInterval?) {
-        guard isAvailable else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Flock"
-        content.subtitle = paneName
-        content.body = formatDuration(duration)
-        content.sound = .default
-        content.categoryIdentifier = "PANE_COMPLETION"
-        content.userInfo = ["paneIndex": paneIndex]
-
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+        let body = formatDuration(duration)
+        if isAvailable {
+            let content = UNMutableNotificationContent()
+            content.title = "Flock"
+            content.subtitle = paneName
+            content.body = body
+            content.sound = .default
+            content.categoryIdentifier = "PANE_COMPLETION"
+            content.userInfo = ["paneIndex": paneIndex]
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        } else {
+            sendOsascript(title: "Flock", message: "\(paneName) — \(body)")
+        }
     }
 
     static func sendAgentStateChange(paneName: String, paneIndex: Int, state: String) {
-        guard isAvailable else { return }
-        let content = UNMutableNotificationContent()
-        content.title = "Flock — \(paneName)"
-        content.body = state
-        content.sound = .default
-        content.categoryIdentifier = "AGENT_STATE"
-        content.userInfo = ["paneIndex": paneIndex]
+        if isAvailable {
+            let content = UNMutableNotificationContent()
+            content.title = "Flock — \(paneName)"
+            content.body = state
+            content.sound = .default
+            content.categoryIdentifier = "AGENT_STATE"
+            content.userInfo = ["paneIndex": paneIndex]
+            let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
+            UNUserNotificationCenter.current().add(request)
+        } else {
+            sendOsascript(title: "Flock", message: "\(paneName) — \(state)")
+        }
+    }
 
-        let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
-        UNUserNotificationCenter.current().add(request)
+    private static func sendOsascript(title: String, message: String) {
+        let escaped = message.replacingOccurrences(of: "\"", with: "\\\"")
+        let script = "display notification \"\(escaped)\" with title \"\(title)\""
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        proc.arguments = ["-e", script]
+        try? proc.run()
     }
 
     private static func formatDuration(_ duration: TimeInterval?) -> String {

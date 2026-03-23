@@ -18,7 +18,7 @@ you open flock. you press `⌘T` a few times. suddenly four claudes are working 
 
 ```bash
 brew tap divagation/flock
-brew install --cask flock
+brew install --cask flockapp
 ```
 
 or grab the `.zip` from [releases](https://github.com/Divagation/flock/releases) and drag it into Applications. done.

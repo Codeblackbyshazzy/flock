@@ -131,28 +131,26 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
         updateTitleBar()
 
-        // Agent state parser (Claude panes only)
-        if type == .claude {
-            outputParser.onStateChange = { [weak self] state in
-                guard let self else { return }
-                let oldState = self.agentState
-                self.agentState = state
-                self.updateTitleBar()
-                self.manager?.tabBar?.update()
-                self.manager?.statusBar?.update()
+        // Agent state parser
+        outputParser.onStateChange = { [weak self] state in
+            guard let self else { return }
+            let oldState = self.agentState
+            self.agentState = state
+            self.updateTitleBar()
+            self.manager?.tabBar?.update()
+            self.manager?.statusBar?.update()
 
-                // Notify on important state changes in unfocused panes
-                if !self.isFocused {
-                    let paneName = self.customName ?? self.processTitle ?? self.type.label
-                    let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
-                    if state == .waiting && oldState != .waiting {
-                        FlockNotifications.sendAgentStateChange(
-                            paneName: paneName, paneIndex: paneIdx, state: "Waiting for your input")
-                        SoundEffects.playChime()
-                    } else if state == .error && oldState != .error {
-                        FlockNotifications.sendAgentStateChange(
-                            paneName: paneName, paneIndex: paneIdx, state: "Error detected")
-                    }
+            // Notify on important state changes in unfocused panes
+            if !self.isFocused {
+                let paneName = self.customName ?? self.processTitle ?? self.type.label
+                let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
+                if state == .waiting && oldState != .waiting {
+                    FlockNotifications.sendAgentStateChange(
+                        paneName: paneName, paneIndex: paneIdx, state: "Waiting for your input")
+                    SoundEffects.playChime()
+                } else if state == .error && oldState != .error {
+                    FlockNotifications.sendAgentStateChange(
+                        paneName: paneName, paneIndex: paneIdx, state: "Error detected")
                 }
             }
         }
@@ -231,7 +229,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     // MARK: - Title bar
 
     private func updateTitleBar() {
-        let stateLabel = (type == .claude && agentState != .idle) ? agentState.label : nil
+        let stateLabel = (agentState != .idle) ? agentState.label : nil
         titleProcessLabel.stringValue = stateLabel ?? processTitle ?? type.label
         titleProcessLabel.textColor = (agentState == .waiting) ? Theme.accent
             : (agentState == .error) ? NSColor(hex: 0xFF3B30)

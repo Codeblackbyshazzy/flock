@@ -93,7 +93,7 @@ Parallel Claude Code terminal multiplexer for macOS.
 
 \`\`\`
 brew tap divagation/flock
-brew install --cask flock
+brew install --cask flockapp
 \`\`\`
 
 Or download \`${ZIP_NAME}\`, unzip, and drag to Applications.
@@ -118,8 +118,8 @@ echo "Updating Homebrew cask..."
 TAP_DIR=$(mktemp -d)
 git clone --depth 1 https://github.com/Divagation/homebrew-flock.git "$TAP_DIR"
 
-cat > "$TAP_DIR/Casks/flock.rb" << CASK
-cask "flock" do
+cat > "$TAP_DIR/Casks/flockapp.rb" << CASK
+cask "flockapp" do
   version "${VERSION}"
   sha256 "${SHA256}"
 
@@ -151,4 +151,4 @@ rm -rf "$TAP_DIR"
 echo ""
 echo "Done. Install with:"
 echo "  brew tap divagation/flock"
-echo "  brew install --cask flock"
+echo "  brew install --cask flockapp"

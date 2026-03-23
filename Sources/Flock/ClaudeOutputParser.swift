@@ -7,16 +7,18 @@ enum AgentState: String {
     case thinking
     case writing
     case running
+    case reading
     case waiting
     case error
 
     var label: String {
         switch self {
         case .idle:     return ""
-        case .thinking: return "Thinking..."
+        case .thinking: return "Thinking…"
         case .writing:  return "Writing files"
         case .running:  return "Running command"
-        case .waiting:  return "Waiting for input"
+        case .reading:  return "Reading…"
+        case .waiting:  return "Needs input"
         case .error:    return "Error"
         }
     }
@@ -27,65 +29,83 @@ enum AgentState: String {
         case .thinking: return "brain"
         case .writing:  return "doc.text"
         case .running:  return "terminal"
+        case .reading:  return "doc.text.magnifyingglass"
         case .waiting:  return "exclamationmark.bubble"
         case .error:    return "xmark.circle"
         }
     }
 
-    /// Priority for conflict resolution (higher wins).
     fileprivate var priority: Int {
         switch self {
         case .idle:     return 0
         case .thinking: return 1
-        case .running:  return 2
-        case .writing:  return 3
-        case .error:    return 4
-        case .waiting:  return 5
+        case .reading:  return 2
+        case .running:  return 3
+        case .writing:  return 4
+        case .error:    return 5
+        case .waiting:  return 6
         }
     }
 }
 
 // MARK: - ClaudeOutputParser
 
-/// Parses raw Claude CLI terminal output (with ANSI escapes) to detect
-/// the current agent state based on text patterns.
+/// Detects agent state from raw terminal output.
+///
+/// TUI agents (Claude Code, Amp) redraw the entire screen each frame.
+/// Each redraw contains the full visible content, so we check each
+/// incoming chunk independently — no buffering needed.
+/// We strip ANSI escapes, collapse whitespace, extract all "words",
+/// then match against known tokens.
 final class ClaudeOutputParser {
 
     private(set) var state: AgentState = .idle
     var onStateChange: ((AgentState) -> Void)?
 
     private var idleTimer: Timer?
-    private let idleTimeout: TimeInterval = 3.0
+    private let idleTimeout: TimeInterval = 4.0
 
-    // MARK: - Regex
+    // MARK: - ANSI stripping
 
-    /// Matches ANSI escape sequences: CSI sequences, OSC sequences, and simple escapes.
     private static let ansiPattern: NSRegularExpression = {
-        // CSI: \x1B[ ... letter
-        // OSC: \x1B] ... BEL/ST
-        // Simple two-byte escapes: \x1B followed by single char
-        let pattern = "\\x1B(?:\\[[0-9;]*[A-Za-z]|\\][^\u{07}]*\u{07}|\\([A-Z]|[>=<])"
+        let pattern = "\\x1B(?:\\[[0-9;?]*[A-Za-z]|\\][^\u{07}]*\u{07}|\\([A-Z]|[>=<])"
         return try! NSRegularExpression(pattern: pattern)
     }()
 
-    // MARK: - Feed
-
-    /// Strips ANSI escapes from `text`, then pattern-matches to detect state changes.
-    func feed(_ text: String) {
-        let clean = stripAnsi(text)
-        let detected = detectState(clean)
-
-        resetIdleTimer()
-
-        guard detected != state else { return }
-        state = detected
-        let newState = detected
-        DispatchQueue.main.async { [weak self] in
-            self?.onStateChange?(newState)
-        }
+    private func stripAnsi(_ text: String) -> String {
+        let range = NSRange(text.startIndex..., in: text)
+        return Self.ansiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }
 
-    // MARK: - Reset
+    // MARK: - Feed
+
+    func feed(_ text: String) {
+        let clean = stripAnsi(text)
+        guard clean.count > 5 else { return }  // skip tiny fragments
+
+        // Collapse whitespace and extract a compact string to search
+        let compact = clean.split(whereSeparator: { $0.isWhitespace || $0.isNewline })
+                          .joined(separator: " ")
+        guard !compact.isEmpty else { return }
+
+        let detected = detectState(compact)
+
+        // Only transition away from idle if we found something;
+        // idle transitions happen via the timer
+        if detected != .idle {
+            resetIdleTimer()
+            if detected != state {
+                state = detected
+                let s = detected
+                DispatchQueue.main.async { [weak self] in
+                    self?.onStateChange?(s)
+                }
+            }
+        } else if state != .idle {
+            // Still getting output but no patterns — reset idle timer
+            resetIdleTimer()
+        }
+    }
 
     func reset() {
         idleTimer?.invalidate()
@@ -93,96 +113,83 @@ final class ClaudeOutputParser {
         state = .idle
     }
 
-    // MARK: - Private
-
-    private func stripAnsi(_ text: String) -> String {
-        let range = NSRange(text.startIndex..., in: text)
-        return Self.ansiPattern.stringByReplacingMatches(
-            in: text,
-            range: range,
-            withTemplate: ""
-        )
-    }
+    // MARK: - Detection
 
     private func detectState(_ text: String) -> AgentState {
-        let lines = text.components(separatedBy: .newlines)
-        var best: AgentState = .idle
+        // Priority: waiting > error > writing > running > reading > thinking
 
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            guard !trimmed.isEmpty else { continue }
-
-            let candidate = classifyLine(trimmed)
-            if candidate.priority > best.priority {
-                best = candidate
-            }
-
-            // Short-circuit at max priority
-            if best == .waiting { return best }
-        }
-
-        return best
-    }
-
-    private func classifyLine(_ line: String) -> AgentState {
-        let lower = line.lowercased()
-
-        // Waiting patterns (highest priority)
-        if lower.contains("do you want to")
-            || lower.contains("allow")
-            || lower.contains("y/n")
-            || lower.contains("yes/no")
-            || lower.contains("(y/n)") {
+        // Waiting / permission
+        if text.contains("wants to") || text.contains("Permission")
+            || text.localizedCaseInsensitiveContains("(y/n)")
+            || text.localizedCaseInsensitiveContains("Yes, allow")
+            || text.localizedCaseInsensitiveContains("No, deny")
+            || text.contains("Do you want") {
             return .waiting
         }
 
-        // Error patterns
-        if lower.contains("error:")
-            || lower.contains("failed")
-            || lower.hasPrefix("error") {
+        // Error
+        if text.contains("Error:") || text.contains("error:")
+            || text.contains("FAILED") || text.contains("API error")
+            || text.contains("hit your limit") || text.contains("Rate limit") {
             return .error
         }
 
-        // Writing patterns
-        if lower.hasPrefix("write file:")
-            || lower.hasPrefix("edit file:")
-            || lower.hasPrefix("created")
-            || lineContainsFilePath(line) {
+        // Writing
+        if text.contains("Write(") || text.contains("Edit(")
+            || text.contains("write_file") || text.contains("edit_file")
+            || text.contains("create_file")
+            || text.contains("Writing") || text.contains("Wrote ") {
             return .writing
         }
 
-        // Running patterns
-        if lower.hasPrefix("running:")
-            || lower.hasPrefix("executing:")
-            || line.hasPrefix("$ ")
-            || line.hasPrefix("> ") {
+        // Running commands
+        if text.contains("Bash(") || text.contains("running for")
+            || text.contains("Executing") {
             return .running
         }
 
-        // Thinking patterns
-        if lower.contains("thinking")
-            || lower.contains("⠋") || lower.contains("⠙")
-            || lower.contains("⠹") || lower.contains("⠸")
-            || lower.contains("⠼") || lower.contains("⠴")
-            || lower.contains("⠦") || lower.contains("⠧")
-            || lower.contains("⠇") || lower.contains("⠏") {
+        // Reading
+        if hasWord(text, "Reading") || hasWord(text, "Searching")
+            || text.contains("Searched") || text.contains("Queried")
+            || text.contains("Grep(") || text.contains("Read(")
+            || text.contains("glob(") || text.contains("finder(") {
+            return .reading
+        }
+
+        // Thinking — braille spinners are the most reliable signal
+        if containsBraille(text) {
+            return .thinking
+        }
+
+        // Text-based thinking
+        if hasWord(text, "Thinking") || hasWord(text, "Reasoning")
+            || text.contains("Thought for") || text.contains("Resolving") {
             return .thinking
         }
 
         return .idle
     }
 
-    /// Detects lines that look like file paths with common extensions.
-    private func lineContainsFilePath(_ line: String) -> Bool {
-        let extensions = [
-            ".swift", ".ts", ".tsx", ".js", ".jsx", ".py", ".rs",
-            ".go", ".json", ".yaml", ".yml", ".toml", ".md",
-            ".html", ".css", ".scss", ".txt", ".sh", ".sql"
-        ]
-        for ext in extensions {
-            if line.contains(ext) { return true }
+    /// Check for braille spinner characters (⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏)
+    private func containsBraille(_ text: String) -> Bool {
+        for c in text {
+            let v = c.unicodeScalars.first?.value ?? 0
+            if v >= 0x280B && v <= 0x283F {  // braille pattern range
+                return true
+            }
         }
         return false
+    }
+
+    /// Check for a whole word (not substring of another word)
+    private func hasWord(_ text: String, _ word: String) -> Bool {
+        guard let range = text.range(of: word) else { return false }
+        // Check character after the match isn't a lowercase letter (avoids false positives)
+        if range.upperBound < text.endIndex {
+            let next = text[range.upperBound]
+            if next.isLowercase { return false }
+        }
+        return true
     }
 
     // MARK: - Idle Timer

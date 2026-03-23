@@ -11,8 +11,8 @@ class FlockTerminalView: LocalProcessTerminalView {
         let text = String(bytes: slice, encoding: .utf8)
         DispatchQueue.main.async { [weak self] in
             self?.owningPane?.didReceiveOutput(byteCount: count)
-            if let text, let pane = self?.owningPane, pane.type == .claude {
-                pane.outputParser.feed(text)
+            if let text {
+                self?.owningPane?.outputParser.feed(text)
             }
         }
     }
