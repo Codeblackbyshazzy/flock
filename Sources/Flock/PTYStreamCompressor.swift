@@ -85,9 +85,13 @@ final class PTYStreamCompressor {
 
     /// Only start counting compression after user sends first keystroke.
     /// Shell startup ANSI noise is not meaningful compression.
+    /// 5s grace period blocks terminal negotiation + shell/Claude startup.
     private(set) var isReady = false
+    private let createdAt = Date()
+    private let startupGrace: TimeInterval = 5.0
 
     func markReady() {
+        guard !isReady, Date().timeIntervalSince(createdAt) > startupGrace else { return }
         isReady = true
     }
 
