@@ -6,6 +6,8 @@
 
 **let your agents loose.**
 
+[divagation.github.io/flock](https://divagation.github.io/flock/)
+
 flock is a tiny, beautiful macOS app that lets you run as many Claude Code sessions as you want, all at once, all in one window. watch them think, read, edit, and build in real time. it's like having a team of programmers that never sleeps.
 
 you open flock. you press `⌘T` a few times. suddenly four claudes are working on four different things and you're just... watching. it's kind of mesmerizing honestly.
