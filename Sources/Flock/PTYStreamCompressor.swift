@@ -71,20 +71,25 @@ struct FoldedChunk {
 
 // MARK: - PTYStreamCompressor
 
-/// Analyzes PTY output streams to track noise vs. signal and provide
-/// compression analytics. Operates as a parallel layer — does NOT modify
-/// the data flowing to SwiftTerm (which needs raw bytes for rendering).
+/// Compresses PTY output streams by stripping non-semantic ANSI, collapsing
+/// progress bars, removing boilerplate, and folding large outputs.
 ///
-/// Compression levels:
-///   Level 1 — ANSI noise detection + progress bar collapsing
-///   Level 2 — Boilerplate/header folding + semantic summarization
+/// Two outputs:
+///   1. Raw data passes through to SwiftTerm unchanged (for rendering)
+///   2. Compressed output stored in `compressedLines` (clean context for LLMs)
+///
+/// Stats track real compression: raw input bytes vs compressed output bytes.
 final class PTYStreamCompressor {
 
     private(set) var stats = CompressionStats()
     private(set) var foldedChunks: [FoldedChunk] = []
 
-    /// Only start counting compression after user sends first keystroke.
-    /// Shell startup ANSI noise is not meaningful compression.
+    /// Compressed output -- clean lines with noise stripped.
+    /// This is the actual compressed context, usable by LLMs.
+    private(set) var compressedLines: [String] = []
+    private let maxCompressedLines = 5_000
+
+    /// Only start counting after user interaction.
     /// 5s grace period blocks terminal negotiation + shell/Claude startup.
     private(set) var isReady = false
     private let createdAt = Date()
@@ -107,7 +112,7 @@ final class PTYStreamCompressor {
     private var isInProgressBar = false
     private var progressBarByteAccum = 0
 
-    // Semantic fold threshold (~1,500 tokens ≈ 6,000 chars)
+    // Semantic fold threshold (~1,500 tokens = 6,000 chars)
     private let semanticFoldCharThreshold = 6_000
     private let tailLinesToKeep = 20
 
@@ -117,15 +122,13 @@ final class PTYStreamCompressor {
 
     // MARK: - ANSI Patterns
 
-    // Cursor movement, screen clear, scrolling — non-semantic ANSI
+    // Cursor movement, screen clear, scrolling -- non-semantic ANSI
     private static let cursorMovePattern: NSRegularExpression = {
-        // CSI sequences for cursor positioning, erasing, scrolling
-        // \e[H \e[2J \e[K \e[nA \e[nB \e[nC \e[nD \e[nG \e[n;nH \e[?25h/l etc.
         let pattern = "\\x1B\\[(?:[0-9;]*[ABCDGHJKST]|\\?[0-9;]*[hl]|[0-9]*[LM]|=[0-9;]*[hl])"
         return try! NSRegularExpression(pattern: pattern)
     }()
 
-    // Color/style ANSI — these ARE semantic (keep them)
+    // Color/style ANSI -- these ARE semantic (keep them)
     private static let colorPattern: NSRegularExpression = {
         let pattern = "\\x1B\\[[0-9;]*m"
         return try! NSRegularExpression(pattern: pattern)
@@ -153,21 +156,13 @@ final class PTYStreamCompressor {
 
     private static let progressPatterns: [NSRegularExpression] = {
         let patterns = [
-            // npm style: [####    ] 45%
             "\\[#+\\s*\\]\\s*\\d+%",
-            // pip/generic: |████░░░░| 67%
             "[|\\[][\u{2588}\u{2591}\u{2592}\u{2593}#=\\->\\s]+[|\\]]\\s*\\d+",
-            // percentage with progress: 45% or 100%
             "^\\s*\\d{1,3}%\\s",
-            // docker pull: abc123: Pull complete / Downloading [===>  ]
             "(?:Pull complete|Downloading|Extracting)\\s*\\[?[=>\\s]*\\]?",
-            // npm install progress: added X packages
             "added \\d+ packages?",
-            // spinner chars followed by text (⠋⠙⠹⠸ etc.)
             "^[\\s]*[\u{2800}-\u{28FF}]",
-            // Cargo/Rust: Compiling foo v1.2.3 (repetitive)
             "^\\s*(Compiling|Downloading|Downloaded)\\s+\\S+\\s+v",
-            // Generic progress: [n/m] or (n/m)
             "^\\s*[\\[(]\\d+/\\d+[\\])]",
         ]
         return patterns.compactMap { try? NSRegularExpression(pattern: $0) }
@@ -177,16 +172,12 @@ final class PTYStreamCompressor {
 
     private static let boilerplatePatterns: [NSRegularExpression] = {
         let patterns = [
-            // Copyright/license headers
-            "(?i)copyright\\s+(?:\\(c\\)|©)\\s*\\d{4}",
+            "(?i)copyright\\s+(?:\\(c\\)|\\u{00A9})\\s*\\d{4}",
             "(?i)licensed under",
             "(?i)all rights reserved",
-            // Common CLI banners
             "(?i)^\\s*version\\s+\\d+\\.\\d+",
-            // Webpack/bundler summaries (repeated build info)
             "(?i)webpack compiled",
             "(?i)build completed",
-            // Python/Node version headers
             "^Python \\d+\\.\\d+\\.\\d+",
             "^Node\\.js v\\d+",
         ]
@@ -195,35 +186,40 @@ final class PTYStreamCompressor {
 
     // MARK: - Feed Data
 
-    /// Analyze a chunk of PTY output data. Call this for every `dataReceived` event.
+    /// Analyze and compress a chunk of PTY output data.
     func feed(_ data: ArraySlice<UInt8>) {
         guard isReady else { return }
         let byteCount = data.count
         stats.rawBytes += byteCount
 
         guard let text = String(bytes: data, encoding: .utf8) else {
-            // Binary data — count as noise
             stats.noiseBytes += byteCount
             scheduleStatsUpdate()
             return
         }
 
-        analyzeText(text, byteCount: byteCount)
+        analyzeAndCompress(text, byteCount: byteCount)
         scheduleStatsUpdate()
     }
 
-    /// Analyze a text string (convenience for when text is already decoded).
+    /// Analyze and compress a text string.
     func feedText(_ text: String) {
         guard isReady else { return }
         let byteCount = text.utf8.count
         stats.rawBytes += byteCount
-        analyzeText(text, byteCount: byteCount)
+        analyzeAndCompress(text, byteCount: byteCount)
         scheduleStatsUpdate()
+    }
+
+    /// Get the compressed context as a single string.
+    var compressedContext: String {
+        compressedLines.joined(separator: "\n")
     }
 
     func reset() {
         stats = CompressionStats()
         foldedChunks.removeAll()
+        compressedLines.removeAll()
         lineBuffer.removeAll()
         currentLine = ""
         outputStartTime = nil
@@ -235,87 +231,111 @@ final class PTYStreamCompressor {
         statsDebounceTimer = nil
     }
 
-    // MARK: - Analysis
+    // MARK: - Analysis + Compression
 
-    private func analyzeText(_ text: String, byteCount: Int) {
-        // Level 1: Detect ANSI noise
+    private func analyzeAndCompress(_ text: String, byteCount: Int) {
+        // Count ANSI noise bytes
         let noiseBytes = measureAnsiNoise(text)
         stats.noiseBytes += noiseBytes
 
-        // Split into lines for line-level analysis
+        // Split into lines for line-level analysis + compression
         let lines = text.components(separatedBy: .newlines)
 
         for line in lines {
             currentLine += line
 
-            // Check if this is a complete line (text had newlines)
             if lines.count > 1 {
-                analyzeLine(currentLine)
+                let action = classifyLine(currentLine)
+                applyLineAction(currentLine, action: action)
                 lineBuffer.append(currentLine)
                 currentLine = ""
             }
         }
-        // Keep partial line in currentLine for next chunk
 
-        // If the last component wasn't empty, it's a partial line — already in currentLine
         if text.hasSuffix("\n") || text.hasSuffix("\r") {
             if !currentLine.isEmpty {
-                analyzeLine(currentLine)
+                let action = classifyLine(currentLine)
+                applyLineAction(currentLine, action: action)
                 lineBuffer.append(currentLine)
                 currentLine = ""
             }
         }
 
-        // Semantic folding: check if buffered output exceeds threshold
         checkSemanticFoldThreshold()
+        trimCompressedBuffer()
     }
 
-    private func analyzeLine(_ line: String) {
+    // MARK: - Line Classification
+
+    private enum LineAction {
+        case keep           // Add cleaned line to compressed output
+        case keepError      // Error line -- always preserve verbatim
+        case dropProgress   // Progress bar -- drop from compressed output
+        case dropBoilerplate // Boilerplate -- drop from compressed output
+    }
+
+    private func classifyLine(_ line: String) -> LineAction {
         let stripped = stripAllAnsi(line)
 
-        // Safety: never count error lines as compressed
         if Self.containsErrorKeyword(stripped) {
-            stats.errorLines += 1
-            return
+            return .keepError
         }
+        if isProgressBar(stripped) {
+            return .dropProgress
+        }
+        if isBoilerplate(stripped) {
+            return .dropBoilerplate
+        }
+        return .keep
+    }
 
+    private func applyLineAction(_ line: String, action: LineAction) {
         let lineBytes = line.utf8.count
 
-        // Level 1: Progress bar detection
-        if isProgressBar(stripped) {
+        switch action {
+        case .keepError:
+            stats.errorLines += 1
+            // Keep error lines in compressed output with ANSI stripped
+            let clean = stripAllAnsi(line).trimmingCharacters(in: .whitespaces)
+            if !clean.isEmpty {
+                compressedLines.append(clean)
+            }
+
+        case .keep:
+            if isInProgressBar {
+                isInProgressBar = false
+                progressBarByteAccum = 0
+            }
+            // Strip non-semantic ANSI, keep the content
+            let clean = stripNonSemanticAnsi(line).trimmingCharacters(in: .whitespaces)
+            if !clean.isEmpty {
+                compressedLines.append(clean)
+            }
+
+        case .dropProgress:
             stats.progressBarBytes += lineBytes
             isInProgressBar = true
             progressBarByteAccum += lineBytes
-            return
-        } else if isInProgressBar {
-            // Exiting a progress bar sequence
-            isInProgressBar = false
-            progressBarByteAccum = 0
-        }
+            // Dropped from compressed output
 
-        // Level 2: Boilerplate detection
-        if isBoilerplate(stripped) {
+        case .dropBoilerplate:
             stats.boilerplateBytes += lineBytes
-            return
+            // Dropped from compressed output
         }
     }
 
     // MARK: - ANSI Noise Measurement
 
-    /// Measure bytes consumed by non-semantic ANSI sequences (cursor movement, screen clear).
-    /// Color sequences are NOT counted as noise.
     private func measureAnsiNoise(_ text: String) -> Int {
         let nsText = text as NSString
         let range = NSRange(location: 0, length: nsText.length)
 
-        // Total ANSI bytes
         let allMatches = Self.allAnsiPattern.matches(in: text, range: range)
         var totalAnsi = 0
         for match in allMatches {
             totalAnsi += nsText.substring(with: match.range).utf8.count
         }
 
-        // Subtract color/style ANSI (those are semantic)
         let colorMatches = Self.colorPattern.matches(in: text, range: range)
         var colorBytes = 0
         for match in colorMatches {
@@ -323,6 +343,21 @@ final class PTYStreamCompressor {
         }
 
         return max(0, totalAnsi - colorBytes)
+    }
+
+    // MARK: - ANSI Stripping
+
+    /// Strip ALL ANSI escapes (for error lines that need full cleaning).
+    private func stripAllAnsi(_ text: String) -> String {
+        let range = NSRange(text.startIndex..., in: text)
+        return Self.allAnsiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+    }
+
+    /// Strip only non-semantic ANSI (cursor movement, screen control).
+    /// Keeps color/style codes since those carry meaning.
+    private func stripNonSemanticAnsi(_ text: String) -> String {
+        let range = NSRange(text.startIndex..., in: text)
+        return Self.cursorMovePattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
     }
 
     // MARK: - Progress Bar Detection
@@ -340,7 +375,6 @@ final class PTYStreamCompressor {
             }
         }
 
-        // Carriage return without newline often indicates progress overwrite
         if line.contains("\r") && !line.contains("\n") && line.count > 5 {
             return true
         }
@@ -380,7 +414,6 @@ final class PTYStreamCompressor {
         let totalChars = lineBuffer.reduce(0) { $0 + $1.count }
         guard totalChars >= semanticFoldCharThreshold else { return }
 
-        // Generate a fold summary
         let totalBytes = lineBuffer.reduce(0) { $0 + $1.utf8.count }
         let summary = generateSummary(lines: lineBuffer)
         let tail = Array(lineBuffer.suffix(tailLinesToKeep))
@@ -394,25 +427,32 @@ final class PTYStreamCompressor {
             timestamp: Date()
         )
         foldedChunks.append(chunk)
-        stats.semanticFoldBytes += max(0, totalBytes - tail.reduce(0) { $0 + $1.utf8.count })
 
-        // Reset buffer
+        let tailBytes = tail.reduce(0) { $0 + $1.utf8.count }
+        stats.semanticFoldBytes += max(0, totalBytes - tailBytes)
+
+        // Replace the big block in compressed output with summary + tail
+        let foldedCount = lineBuffer.count - tailLinesToKeep
+        if foldedCount > 0, compressedLines.count >= foldedCount {
+            compressedLines.removeLast(min(foldedCount, compressedLines.count))
+        }
+        compressedLines.append(summary)
+        for line in tail {
+            compressedLines.append(stripAllAnsi(line))
+        }
+
         lineBuffer.removeAll()
     }
 
-    /// Generate a heuristic summary of buffered output lines.
     private func generateSummary(lines: [String]) -> String {
         let strippedLines = lines.map { stripAllAnsi($0) }
         let nonEmpty = strippedLines.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
         let lineCount = nonEmpty.count
 
-        // Count error/warning lines
         let errorCount = nonEmpty.filter { Self.containsErrorKeyword($0) }.count
 
-        // Detect common patterns
         var patterns: [String] = []
 
-        // Check for test output
         let testLines = nonEmpty.filter {
             $0.contains("PASS") || $0.contains("FAIL") || $0.contains("test") || $0.contains("spec")
         }
@@ -422,7 +462,6 @@ final class PTYStreamCompressor {
             patterns.append("Tests: \(passing) passed, \(failing) failed")
         }
 
-        // Check for install/download output
         let installLines = nonEmpty.filter {
             $0.contains("install") || $0.contains("added") || $0.contains("download")
         }
@@ -430,7 +469,6 @@ final class PTYStreamCompressor {
             patterns.append("Package install/download output")
         }
 
-        // Check for build output
         let buildLines = nonEmpty.filter {
             $0.contains("Compiling") || $0.contains("Building") || $0.contains("Linking")
         }
@@ -447,11 +485,12 @@ final class PTYStreamCompressor {
         return summary
     }
 
-    // MARK: - Helpers
+    // MARK: - Buffer Management
 
-    private func stripAllAnsi(_ text: String) -> String {
-        let range = NSRange(text.startIndex..., in: text)
-        return Self.allAnsiPattern.stringByReplacingMatches(in: text, range: range, withTemplate: "")
+    private func trimCompressedBuffer() {
+        if compressedLines.count > maxCompressedLines {
+            compressedLines.removeFirst(compressedLines.count - maxCompressedLines)
+        }
     }
 
     private func scheduleStatsUpdate() {
