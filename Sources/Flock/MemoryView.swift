@@ -140,6 +140,10 @@ private class MemorySidebarView: NSView {
             self, selector: #selector(handleThemeChange),
             name: Theme.themeDidChange, object: nil
         )
+
+        // Force initial layout -- resizeSubviews won't fire because
+        // subviews are added after super.init sets the frame size.
+        resizeSubviews(withOldSize: .zero)
     }
 
     @available(*, unavailable)
