@@ -89,15 +89,16 @@ final class PTYStreamCompressor {
     private(set) var compressedLines: [String] = []
     private let maxCompressedLines = 5_000
 
-    /// Only start counting after user interaction.
-    /// 5s grace period blocks terminal negotiation + shell/Claude startup.
+    /// Ignores first 30s of output -- shell init, Claude boot, terminal
+    /// negotiation all happen in that window. Self-arms after the grace.
     private(set) var isReady = false
     private let createdAt = Date()
-    private let startupGrace: TimeInterval = 5.0
+    private let startupGrace: TimeInterval = 30.0
 
-    func markReady() {
-        guard !isReady, Date().timeIntervalSince(createdAt) > startupGrace else { return }
-        isReady = true
+    private func armIfReady() {
+        if !isReady, Date().timeIntervalSince(createdAt) > startupGrace {
+            isReady = true
+        }
     }
 
     var onStatsUpdate: ((CompressionStats) -> Void)?
@@ -188,6 +189,7 @@ final class PTYStreamCompressor {
 
     /// Analyze and compress a chunk of PTY output data.
     func feed(_ data: ArraySlice<UInt8>) {
+        armIfReady()
         guard isReady else { return }
         let byteCount = data.count
         stats.rawBytes += byteCount
@@ -204,6 +206,7 @@ final class PTYStreamCompressor {
 
     /// Analyze and compress a text string.
     func feedText(_ text: String) {
+        armIfReady()
         guard isReady else { return }
         let byteCount = text.utf8.count
         stats.rawBytes += byteCount

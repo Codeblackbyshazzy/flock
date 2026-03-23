@@ -413,11 +413,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         terminalView.installColors(colors)
     }
 
-    func sendText(_ text: String) {
-        terminalView.isProgrammaticSend = true
-        terminalView.send(txt: text)
-        terminalView.isProgrammaticSend = false
-    }
+    func sendText(_ text: String) { terminalView.send(txt: text) }
 
     func shutdown() {
         if let dir = zdotdir { ShellEnhancer.cleanup(zdotdir: dir) }
