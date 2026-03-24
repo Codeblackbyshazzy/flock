@@ -14,3 +14,4 @@ icon.iconset/
 
 # Flock memory context (auto-generated)
 .flock-context.md
+.build-fresh/
