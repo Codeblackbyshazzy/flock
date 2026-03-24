@@ -418,9 +418,9 @@ class PaneManager {
         let gap = Theme.paneGap
         let area = NSRect(
             x: bounds.origin.x + pad,
-            y: bounds.origin.y + pad,
+            y: bounds.origin.y,
             width: bounds.width - pad * 2,
-            height: bounds.height - pad * 2
+            height: bounds.height - pad
         )
 
         let (cols, _) = gridDimensions(for: count)

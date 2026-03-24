@@ -109,7 +109,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
         // Pane title bar
         paneTitleBar.wantsLayer = true
-        paneTitleBar.layer?.backgroundColor = Theme.chrome.cgColor
+        paneTitleBar.layer?.backgroundColor = Theme.surface.cgColor
         clipView.addSubview(paneTitleBar)
 
         titleProcessLabel.font = NSFont.systemFont(ofSize: 10.5, weight: .medium)
@@ -215,7 +215,7 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         dimOverlayLayer.backgroundColor = Theme.chrome.withAlphaComponent(0.04).cgColor
         terminalView.nativeBackgroundColor = Theme.terminalBg
         terminalView.nativeForegroundColor = Theme.terminalFg
-        paneTitleBar.layer?.backgroundColor = Theme.chrome.cgColor
+        paneTitleBar.layer?.backgroundColor = Theme.surface.cgColor
         titleProcessLabel.textColor = Theme.textSecondary
         titleCwdLabel.textColor = Theme.textTertiary
         installAnsiColors()

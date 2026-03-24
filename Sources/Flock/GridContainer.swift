@@ -133,8 +133,13 @@ class GridContainer: NSView {
         guard !empty else { return }
 
         if mgr.isMaximized && mgr.activePaneIndex >= 0 {
-            let inset = Theme.panePadding
-            let maxFrame = bounds.insetBy(dx: inset, dy: inset)
+            let pad = Theme.panePadding
+            let maxFrame = NSRect(
+                x: pad,
+                y: 0,
+                width: bounds.width - pad * 2,
+                height: bounds.height - pad
+            )
             // Hide all panes not in the active tab node
             let activeTabIdx = mgr.activeTabIndex ?? 0
             for (ti, node) in mgr.tabNodes.enumerated() {

@@ -1,23 +1,47 @@
 import Foundation
+import UserNotifications
 
 enum FlockNotifications {
     static let focusPaneRequested = Notification.Name("FlockFocusPaneRequested")
 
+    private static var useNative = false
+
     static func requestPermission() {
-        // no-op: ad-hoc signed apps can't use UNUserNotificationCenter
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
+            useNative = granted
+        }
     }
 
     static func setup() {
-        // no-op: ad-hoc signed apps can't use UNUserNotificationCenter
+        // Check if we already have permission (e.g. from a previous launch)
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            useNative = settings.authorizationStatus == .authorized
+        }
     }
 
     static func sendCompletion(paneName: String, paneIndex: Int, duration: TimeInterval?) {
         let body = formatDuration(duration)
-        sendOsascript(title: "Flock", message: "\(paneName) — \(body)")
+        send(title: "Flock", body: "\(paneName) — \(body)")
     }
 
     static func sendAgentStateChange(paneName: String, paneIndex: Int, state: String) {
-        sendOsascript(title: "Flock", message: "\(paneName) — \(state)")
+        send(title: "Flock", body: "\(paneName) — \(state)")
+    }
+
+    private static func send(title: String, body: String) {
+        if useNative {
+            let content = UNMutableNotificationContent()
+            content.title = title
+            content.body = body
+            let request = UNNotificationRequest(
+                identifier: UUID().uuidString,
+                content: content,
+                trigger: nil
+            )
+            UNUserNotificationCenter.current().add(request)
+        } else {
+            sendOsascript(title: title, message: body)
+        }
     }
 
     private static func sendOsascript(title: String, message: String) {

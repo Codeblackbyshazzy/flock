@@ -268,7 +268,7 @@ struct Theme {
 
     // MARK: - Layout
 
-    static let tabBarHeight:  CGFloat = 44
+    static let tabBarHeight:  CGFloat = 16
     static let statusHeight:  CGFloat = 24
     static let paneGap:       CGFloat = Space.sm
     static let panePadding:   CGFloat = Space.lg

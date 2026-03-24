@@ -79,11 +79,18 @@ class FlockRootView: NSView {
 
     private var titlebarInset: CGFloat {
         guard let window = window else { return 0 }
-        // In fullSizeContentView mode, content extends behind titlebar.
-        // The titlebar height is the difference between frame and content layout rect.
         let frameInWindow = window.contentLayoutRect
         let fullFrame = NSRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
         return fullFrame.height - frameInWindow.height
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        // contentLayoutRect isn't ready on first layout -- re-layout once the window is set up
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.resizeSubviews(withOldSize: self.bounds.size)
+        }
     }
 
     override func resizeSubviews(withOldSize oldSize: NSSize) {
