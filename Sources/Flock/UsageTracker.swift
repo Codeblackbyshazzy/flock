@@ -300,9 +300,9 @@ class UsageTracker {
     }
 
     /// Convert raw utilization value to integer percentage.
-    /// The API returns a decimal (0.33 = 33%), but may exceed 1.0 when over limit.
+    /// The API returns a percentage directly (e.g. 33.0 = 33%).
     private func utilPercent(_ raw: Double) -> Int {
-        return min(Int(raw * 100), 999)
+        return min(max(Int(raw), 0), 999)
     }
 
     var formattedLimit: String? {

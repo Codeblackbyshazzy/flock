@@ -213,6 +213,25 @@ class CommandPalette {
             CommandAction(name: "Toggle Memory Feature", shortcut: "", category: "Memory") {
                 Settings.shared.memoryEnabled.toggle()
             },
+            CommandAction(name: "Show Journal", shortcut: "", category: "Journal") { [weak self] in
+                guard let pm = self?.paneManager else { return }
+                pm.addPane(type: .shell)
+                // Send pretty-print command after shell initializes
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    guard let pane = pm.panes.last else { return }
+                    pane.customName = "Journal"
+                    pm.tabBar?.update()
+                    let tmpPath = FlockJournal.shared.renderToTempFile()
+                    let cmd = "cat '\(tmpPath)'"
+                    pane.sendText(cmd + "\n")
+                }
+            },
+            CommandAction(name: "Clear Journal", shortcut: "", category: "Journal") {
+                FlockJournal.shared.clear()
+            },
+            CommandAction(name: "Toggle Journal", shortcut: "", category: "Journal") {
+                Settings.shared.journalEnabled.toggle()
+            },
         ] + Themes.all.map { theme in
             CommandAction(name: "Theme: \(theme.name)", shortcut: "", category: "Appearance") {
                 Settings.shared.themeId = theme.id

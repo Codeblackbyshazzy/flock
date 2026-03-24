@@ -15,12 +15,14 @@ class PreferencesView: NSView {
     private let soundSwitch = NSSwitch()
     private let memorySwitch = NSSwitch()
     private let usageSwitch = NSSwitch()
+    private let journalSwitch = NSSwitch()
+    private let journalTTLControl = NSSegmentedControl()
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     // MARK: - Layout Constants
 
     private let panelWidth: CGFloat = 480
-    private let panelHeight: CGFloat = 512
+    private let panelHeight: CGFloat = 600
     private let labelX: CGFloat = 24
     private let controlX: CGFloat = 160
     private let controlWidth: CGFloat = 200
@@ -32,7 +34,7 @@ class PreferencesView: NSView {
 
     static func show(on window: NSWindow) {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 512),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 600),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: true
@@ -41,7 +43,7 @@ class PreferencesView: NSView {
         panel.isFloatingPanel = false
         panel.becomesKeyOnlyIfNeeded = false
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 512))
+        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 600))
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
@@ -223,6 +225,46 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // ── Journal ──
+        y += sectionGap - rowHeight
+        y = addSectionHeader("Journal", y: y)
+
+        y = addRow(y: y)
+        addLabel("Agent Journal", y: y)
+
+        journalSwitch.state = settings.journalEnabled ? .on : .off
+        journalSwitch.target = self
+        journalSwitch.action = #selector(journalChanged(_:))
+        journalSwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(journalSwitch)
+
+        let journalHint = NSTextField(labelWithString: "Track what each agent reads, writes, and searches")
+        journalHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        journalHint.textColor = Theme.textTertiary
+        journalHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 260, height: 14)
+        addSubview(journalHint)
+
+        y += rowHeight
+
+        // Journal TTL
+        y = addRow(y: y)
+        addLabel("Keep For", y: y)
+
+        journalTTLControl.segmentCount = 4
+        journalTTLControl.setLabel("30m", forSegment: 0)
+        journalTTLControl.setLabel("1h", forSegment: 1)
+        journalTTLControl.setLabel("2h", forSegment: 2)
+        journalTTLControl.setLabel("4h", forSegment: 3)
+        journalTTLControl.segmentStyle = .rounded
+        let ttl = settings.journalTTLMinutes
+        journalTTLControl.selectedSegment = ttl <= 30 ? 0 : ttl <= 60 ? 1 : ttl <= 120 ? 2 : 3
+        journalTTLControl.target = self
+        journalTTLControl.action = #selector(journalTTLChanged(_:))
+        journalTTLControl.frame = NSRect(x: controlX, y: y + 2, width: controlWidth, height: 24)
+        addSubview(journalTTLControl)
+
+        y += rowHeight
+
         // ── Done Button ──
         let btnWidth: CGFloat = 72
         let btnHeight: CGFloat = 28
@@ -311,6 +353,15 @@ class PreferencesView: NSView {
 
     @objc private func memoryChanged(_ sender: NSSwitch) {
         Settings.shared.memoryEnabled = (sender.state == .on)
+    }
+
+    @objc private func journalChanged(_ sender: NSSwitch) {
+        Settings.shared.journalEnabled = (sender.state == .on)
+    }
+
+    @objc private func journalTTLChanged(_ sender: NSSegmentedControl) {
+        let values = [30, 60, 120, 240]
+        Settings.shared.journalTTLMinutes = values[sender.selectedSegment]
     }
 
     @objc private func done(_ sender: Any) {
