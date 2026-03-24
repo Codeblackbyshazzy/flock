@@ -41,9 +41,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             TaskStore.shared.markFailed(task, error: "Interrupted by app restart")
         }
 
-        // Prune stale journal entries on startup
-        FlockJournal.shared.prune()
-
         // Usage tracker
         if Settings.shared.showUsageTracker {
             UsageTracker.shared.start()
@@ -76,7 +73,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         AgentRunner.shared.cancelAll()
         TaskStore.shared.save()
         MemoryStore.shared.save()
-        FlockJournal.shared.save()
         return .terminateNow
     }
 

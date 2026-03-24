@@ -150,8 +150,7 @@ final class MemoryStore {
     // MARK: - Context File Generation
 
     /// Writes a `.flock-context.md` file in the given directory with relevant memories.
-    /// Pass `excludingPaneId` to filter journal entries from the requesting pane.
-    func writeContextFile(to directory: String, excludingPaneId: UUID? = nil) {
+    func writeContextFile(to directory: String) {
         guard Settings.shared.memoryEnabled else { return }
         guard !memories.isEmpty else { return }
 
@@ -190,12 +189,6 @@ final class MemoryStore {
                 lines.append("- ... and \(entries.count - 20) more")
             }
             lines.append("")
-        }
-
-        // Journal context: what other agents have done recently
-        if Settings.shared.journalEnabled,
-           let journalContext = FlockJournal.shared.contextBriefing(excludingPane: excludingPaneId ?? UUID()) {
-            lines.append(journalContext)
         }
 
         let text = lines.joined(separator: "\n")

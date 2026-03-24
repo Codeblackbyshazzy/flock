@@ -2,7 +2,6 @@ import AppKit
 import SwiftTerm
 
 class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
-    let id = UUID()
     let terminalView: FlockTerminalView
     let type: PaneType
     var customName: String?
@@ -44,10 +43,6 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     private(set) var commandStartTime: Date?
     var lastCommandDuration: TimeInterval?
     private var lastKnownTitle: String?
-
-    // Conflict warning (auto-clears after timeout)
-    private var conflictWarning: String?
-    private var conflictTimer: Timer?
 
     // Pane title bar
     private let paneTitleBar = NSView(frame: .zero)
@@ -151,19 +146,6 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
             // broad (matches "error:" in code output) and causes spam
         }
 
-        // Journal: log structured actions from Claude output
-        outputParser.onActionDetected = { [weak self] actionType, summary, filePaths in
-            guard let self else { return }
-            let paneName = self.customName ?? self.processTitle ?? self.type.label
-            FlockJournal.shared.log(
-                paneId: self.id,
-                paneName: paneName,
-                action: actionType,
-                summary: summary,
-                filePaths: filePaths
-            )
-        }
-
         // Terminal
         let fontSize = Settings.shared.fontSize
         terminalView.nativeBackgroundColor = Theme.terminalBg
@@ -186,10 +168,9 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         }
 
         if type == .claude {
-            // Write memory context file before launching Claude (includes journal briefing)
             if Settings.shared.memoryEnabled {
                 let contextDir = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
-                MemoryStore.shared.writeContextFile(to: contextDir, excludingPaneId: self.id)
+                MemoryStore.shared.writeContextFile(to: contextDir)
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -203,8 +184,6 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
                                                name: Settings.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(themeDidChange),
                                                name: Theme.themeDidChange, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(journalConflict(_:)),
-                                               name: FlockJournal.conflictDetected, object: nil)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -232,26 +211,6 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         terminalView.setNeedsDisplay(terminalView.bounds)
     }
 
-    @objc private func journalConflict(_ note: Notification) {
-        guard let info = note.userInfo,
-              let paneId = info["paneId"] as? UUID,
-              paneId == self.id,
-              let filePath = info["filePath"] as? String,
-              let conflictingPanes = info["conflictingPanes"] as? [String] else { return }
-
-        let fileName = (filePath as NSString).lastPathComponent
-        let others = conflictingPanes.joined(separator: ", ")
-        conflictWarning = "\(fileName) also edited by \(others)"
-        updateTitleBar()
-
-        // Auto-clear after 10 seconds
-        conflictTimer?.invalidate()
-        conflictTimer = Timer.scheduledTimer(withTimeInterval: 10, repeats: false) { [weak self] _ in
-            self?.conflictWarning = nil
-            self?.updateTitleBar()
-        }
-    }
-
     // MARK: - Accent bar
 
     private func updateAccentBar() {
@@ -266,16 +225,11 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
     // MARK: - Title bar
 
     private func updateTitleBar() {
-        if let warning = conflictWarning {
-            titleProcessLabel.stringValue = "-- \(warning)"
-            titleProcessLabel.textColor = NSColor(hex: 0xFF9500)  // orange
-        } else {
-            let stateLabel = (agentState != .idle) ? agentState.label : nil
-            titleProcessLabel.stringValue = stateLabel ?? processTitle ?? type.label
-            titleProcessLabel.textColor = (agentState == .waiting) ? Theme.accent
-                : (agentState == .error) ? NSColor(hex: 0xFF3B30)
-                : Theme.textSecondary
-        }
+        let stateLabel = (agentState != .idle) ? agentState.label : nil
+        titleProcessLabel.stringValue = stateLabel ?? processTitle ?? type.label
+        titleProcessLabel.textColor = (agentState == .waiting) ? Theme.accent
+            : (agentState == .error) ? NSColor(hex: 0xFF3B30)
+            : Theme.textSecondary
         if let dir = currentDirectory {
             let home = FileManager.default.homeDirectoryForCurrentUser.path
             titleCwdLabel.stringValue = dir.hasPrefix(home) ? "~" + dir.dropFirst(home.count) : dir

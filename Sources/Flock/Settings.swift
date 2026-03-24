@@ -24,8 +24,6 @@ class Settings {
         case maxParallelAgents
         case memoryEnabled
         case showUsageTracker
-        case journalEnabled
-        case journalTTLMinutes
     }
 
     var themeId: String {
@@ -110,22 +108,6 @@ class Settings {
             return defaults.bool(forKey: Key.showUsageTracker.rawValue)
         }
         set { defaults.set(newValue, forKey: Key.showUsageTracker.rawValue); post(.showUsageTracker) }
-    }
-
-    var journalEnabled: Bool {
-        get {
-            if defaults.object(forKey: Key.journalEnabled.rawValue) == nil { return true }
-            return defaults.bool(forKey: Key.journalEnabled.rawValue)
-        }
-        set { defaults.set(newValue, forKey: Key.journalEnabled.rawValue); post(.journalEnabled) }
-    }
-
-    var journalTTLMinutes: Int {
-        get {
-            let v = defaults.integer(forKey: Key.journalTTLMinutes.rawValue)
-            return v > 0 ? v : 120  // default 2 hours
-        }
-        set { defaults.set(newValue, forKey: Key.journalTTLMinutes.rawValue); post(.journalTTLMinutes) }
     }
 
     // ANSI color overrides per theme

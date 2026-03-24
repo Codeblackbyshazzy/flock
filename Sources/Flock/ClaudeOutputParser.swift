@@ -62,14 +62,8 @@ final class ClaudeOutputParser {
     private(set) var state: AgentState = .idle
     var onStateChange: ((AgentState) -> Void)?
 
-    /// Fires when a structured action is detected (file read, write, search, etc.)
-    var onActionDetected: ((JournalActionType, String, [String]) -> Void)?
-
     private var idleTimer: Timer?
     private let idleTimeout: TimeInterval = 4.0
-
-    // Deduplication: track all recently emitted actions (not just the last one)
-    private var recentActions: [String: Date] = [:]
 
     // MARK: - ANSI stripping
 
@@ -101,8 +95,6 @@ final class ClaudeOutputParser {
         if detected != .idle {
             resetIdleTimer()
             if detected != state {
-                // Log journal action on state transitions only
-                extractActionOnTransition(to: detected, text: compact)
                 state = detected
                 let s = detected
                 DispatchQueue.main.async { [weak self] in
@@ -187,129 +179,6 @@ final class ClaudeOutputParser {
             }
         }
         return false
-    }
-
-    // MARK: - Action Extraction (state-transition based)
-
-    /// Only extract journal actions when the agent state actually transitions.
-    /// This avoids false positives from conversation text that happens to
-    /// contain tool names like "Bash(" or "Read(".
-    private func extractActionOnTransition(to newState: AgentState, text: String) {
-        let now = Date()
-
-        var actionType: JournalActionType?
-        var summary: String?
-        var filePaths: [String] = []
-
-        switch newState {
-        case .reading:
-            if let path = extractValidPath(from: text) {
-                actionType = .fileRead
-                summary = "Read \(shortenPath(path))"
-                filePaths = [path]
-            } else if let name = extractFileName(from: text) {
-                actionType = .fileRead
-                summary = "Read \(name)"
-            } else if text.contains("Grep(") || text.contains("Searching") {
-                actionType = .grep
-                summary = "Searching"
-            } else {
-                actionType = .fileRead
-                summary = "Reading"
-            }
-        case .writing:
-            if let path = extractValidPath(from: text) {
-                let isEdit = text.contains("Edit(") || text.contains("edit_file")
-                actionType = isEdit ? .fileEdit : .fileWrite
-                summary = "\(isEdit ? "Edit" : "Write") \(shortenPath(path))"
-                filePaths = [path]
-            } else if let name = extractFileName(from: text) {
-                let isEdit = text.contains("Edit(") || text.contains("edit_file")
-                actionType = isEdit ? .fileEdit : .fileWrite
-                summary = "\(isEdit ? "Edit" : "Write") \(name)"
-            } else {
-                actionType = .fileWrite
-                summary = "Writing"
-            }
-        case .running:
-            actionType = .bash
-            summary = "Running command"
-        default:
-            return
-        }
-
-        guard let type = actionType, let sum = summary else { return }
-
-        // Dedup on state + summary (so different files pass through, same file is deduped)
-        let dedupKey = "\(newState.rawValue):\(sum)"
-
-        // Prune stale entries
-        recentActions = recentActions.filter { now.timeIntervalSince($0.value) < 30.0 }
-
-        if let lastTime = recentActions[dedupKey], now.timeIntervalSince(lastTime) < 30.0 {
-            return
-        }
-        recentActions[dedupKey] = now
-
-        let t = type
-        let s = sum
-        let f = filePaths
-        DispatchQueue.main.async { [weak self] in
-            self?.onActionDetected?(t, s, f)
-        }
-    }
-
-    /// Scans text for a valid absolute file path.
-    private func extractValidPath(from text: String) -> String? {
-        // Look for paths starting with /Users/, /tmp/, etc.
-        let validPrefixes = ["/Users/", "/tmp/", "/var/", "/home/", "/opt/", "/etc/", "/private/"]
-        for prefix in validPrefixes {
-            guard let prefixRange = text.range(of: prefix) else { continue }
-            let pathStart = prefixRange.lowerBound
-            let pathSubstring = text[pathStart...]
-            let endIdx = pathSubstring.firstIndex(where: { $0 == " " || $0 == ")" || $0 == "," || $0 == "\"" || $0 == "\n" })
-                ?? pathSubstring.endIndex
-            let path = String(pathSubstring[..<endIdx])
-            guard path.count > 5 else { continue }
-            if path.contains("(") || path.contains("{") || path.contains(";") { continue }
-            return path
-        }
-        // Also check ~/ paths
-        if let tildeRange = text.range(of: "~/") {
-            let pathSubstring = text[tildeRange.lowerBound...]
-            let endIdx = pathSubstring.firstIndex(where: { $0 == " " || $0 == ")" || $0 == "," || $0 == "\"" || $0 == "\n" })
-                ?? pathSubstring.endIndex
-            let path = String(pathSubstring[..<endIdx])
-            if path.count > 3 { return path }
-        }
-        return nil
-    }
-
-    /// Extracts a filename (e.g. "Foo.swift") from text near tool markers.
-    /// Fallback when full path isn't available due to TUI truncation.
-    private func extractFileName(from text: String) -> String? {
-        // Look for common file patterns near Read(, Edit(, Write(
-        let markers = ["Read(", "Edit(", "Write("]
-        for marker in markers {
-            guard let range = text.range(of: marker) else { continue }
-            let rest = String(text[range.upperBound...].prefix(120))
-            // Match something.ext pattern
-            if let match = rest.range(of: #"[A-Za-z0-9_\-]+\.[a-zA-Z]{1,10}"#, options: .regularExpression) {
-                let name = String(rest[match])
-                // Skip obvious non-files
-                if name.contains("..") || name.hasPrefix(".") { continue }
-                return name
-            }
-        }
-        return nil
-    }
-
-    private func shortenPath(_ path: String) -> String {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        if path.hasPrefix(home) {
-            return "~" + path.dropFirst(home.count)
-        }
-        return path
     }
 
     // MARK: - Idle Timer
