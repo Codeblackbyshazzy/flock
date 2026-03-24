@@ -312,19 +312,21 @@ class PaneManager {
 
     func reorderPane(from sourceIndex: Int, to targetIndex: Int) {
         guard sourceIndex != targetIndex,
-              sourceIndex >= 0, sourceIndex < panes.count,
-              targetIndex >= 0, targetIndex < panes.count else { return }
+              sourceIndex >= 0, sourceIndex < tabNodes.count,
+              targetIndex >= 0, targetIndex < tabNodes.count else { return }
 
-        let pane = panes.remove(at: sourceIndex)
-        panes.insert(pane, at: targetIndex)
+        // Track active pane before reorder
+        let activePane = (activePaneIndex >= 0 && activePaneIndex < panes.count)
+            ? panes[activePaneIndex] : nil
 
-        // Follow the active pane
-        if activePaneIndex == sourceIndex {
-            activePaneIndex = targetIndex
-        } else if sourceIndex < activePaneIndex && targetIndex >= activePaneIndex {
-            activePaneIndex -= 1
-        } else if sourceIndex > activePaneIndex && targetIndex <= activePaneIndex {
-            activePaneIndex += 1
+        let node = tabNodes.remove(at: sourceIndex)
+        tabNodes.insert(node, at: targetIndex)
+        rebuildPanesFromNodes()
+
+        // Restore active pane index after rebuild
+        if let activePane = activePane,
+           let newIndex = panes.firstIndex(where: { $0 === activePane }) {
+            activePaneIndex = newIndex
         }
 
         layoutAndUpdate(animated: true)

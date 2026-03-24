@@ -521,19 +521,19 @@ class TabBarView: NSView, NSTextFieldDelegate {
     // MARK: - Inline rename
 
     func renameActiveTab() {
-        guard let mgr = paneManager, mgr.activePaneIndex >= 0 else { return }
-        beginRename(at: mgr.activePaneIndex)
+        guard let mgr = paneManager, let tabIdx = mgr.activeTabIndex else { return }
+        beginRename(at: tabIdx)
     }
 
-    private func beginRename(at index: Int) {
-        guard let mgr = paneManager, index < mgr.tabNodes.count else { return }
+    private func beginRename(at tabIndex: Int) {
+        guard let mgr = paneManager, tabIndex < mgr.tabNodes.count else { return }
         let frames = tabFrames()
-        guard index < frames.count else { return }
+        guard tabIndex < frames.count else { return }
+        guard let pane = mgr.tabNodes[tabIndex].allLeaves.first else { return }
         commitRename()
 
-        editingIndex = index
-        let pane = mgr.panes[index]
-        let rect = frames[index].insetBy(dx: 4, dy: 3)
+        editingIndex = tabIndex
+        let rect = frames[tabIndex].insetBy(dx: 4, dy: 3)
 
         let field = NSTextField(frame: rect)
         field.stringValue = pane.customName ?? pane.type.label
@@ -557,11 +557,12 @@ class TabBarView: NSView, NSTextFieldDelegate {
     private func commitRename() {
         guard let field = editField,
               let mgr = paneManager,
-              editingIndex >= 0, editingIndex < mgr.panes.count else {
+              editingIndex >= 0, editingIndex < mgr.tabNodes.count,
+              let pane = mgr.tabNodes[editingIndex].allLeaves.first else {
             cleanupEditor(); return
         }
         let text = field.stringValue.trimmingCharacters(in: .whitespaces)
-        mgr.panes[editingIndex].customName = text.isEmpty ? nil : text
+        pane.customName = text.isEmpty ? nil : text
         cleanupEditor()
         update()
     }

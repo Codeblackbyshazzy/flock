@@ -44,9 +44,15 @@ enum FlockNotifications {
         }
     }
 
+    private static func escapeAppleScript(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+         .replacingOccurrences(of: "\"", with: "\\\"")
+    }
+
     private static func sendOsascript(title: String, message: String) {
-        let escaped = message.replacingOccurrences(of: "\"", with: "\\\"")
-        let script = "display notification \"\(escaped)\" with title \"\(title)\""
+        let escapedMsg = escapeAppleScript(message)
+        let escapedTitle = escapeAppleScript(title)
+        let script = "display notification \"\(escapedMsg)\" with title \"\(escapedTitle)\""
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         proc.arguments = ["-e", script]

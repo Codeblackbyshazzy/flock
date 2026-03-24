@@ -36,8 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             paneManager.addPane(type: .claude)
         }
 
-        // Restore agent tasks (mark stale in-progress as interrupted)
-        TaskStore.shared.restore()
+        // Mark stale in-progress tasks as interrupted (restore happens in TaskStore.init)
         for task in TaskStore.shared.inProgress {
             TaskStore.shared.markFailed(task, error: "Interrupted by app restart")
         }

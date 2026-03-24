@@ -28,45 +28,11 @@ mkdir -p "$BUNDLE/Contents/Resources"
 
 cp .build/release/Flock "$BUNDLE/Contents/MacOS/Flock"
 cp AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
+cp Resources/zsh-autosuggestions.zsh "$BUNDLE/Contents/Resources/zsh-autosuggestions.zsh"
 
-# Write Info.plist with correct version
-cat > "$BUNDLE/Contents/Info.plist" << PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleName</key>
-  <string>Flock</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.baa.flock</string>
-  <key>CFBundleExecutable</key>
-  <string>Flock</string>
-  <key>CFBundleVersion</key>
-  <string>${VERSION}</string>
-  <key>CFBundleShortVersionString</key>
-  <string>${VERSION}</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleIconFile</key>
-  <string>AppIcon</string>
-  <key>NSHighResolutionCapable</key>
-  <true/>
-  <key>NSSupportsAutomaticTermination</key>
-  <false/>
-  <key>LSUIElement</key>
-  <false/>
-  <key>NSDesktopFolderUsageDescription</key>
-  <string>Flock terminal sessions need file access.</string>
-  <key>NSDocumentsFolderUsageDescription</key>
-  <string>Flock terminal sessions need file access.</string>
-  <key>NSDownloadsFolderUsageDescription</key>
-  <string>Flock terminal sessions need file access.</string>
-  <key>NSRemovableVolumesUsageDescription</key>
-  <string>Flock terminal sessions need file access.</string>
-</dict>
-</plist>
-PLIST
+# Write Info.plist from source with injected version
+sed -e "s/<string>0\.[0-9]*\.[0-9]*<\/string>/<string>${VERSION}<\/string>/g" \
+  Info.plist > "$BUNDLE/Contents/Info.plist"
 
 # ─── Codesign (ad-hoc) ───
 codesign --force --sign - --deep "$BUNDLE"

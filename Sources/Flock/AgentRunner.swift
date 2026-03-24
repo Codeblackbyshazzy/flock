@@ -10,6 +10,7 @@ final class AgentProcess {
     private let parser = StreamJsonParser()
     private let outputPipe = Pipe()
     private let inputPipe = Pipe()
+    private let parserQueue = DispatchQueue(label: "com.baa.flock.parser")
 
     var onEvent: ((StreamJsonEvent) -> Void)?
     var onComplete: (((isError: Bool, text: String?, costUsd: Double?)) -> Void)?
@@ -31,31 +32,34 @@ final class AgentProcess {
         proc.executableURL = URL(fileURLWithPath: claudePath)
         proc.arguments = ["-p", task.title, "--output-format", "stream-json", "--verbose"]
         proc.standardOutput = outputPipe
+        proc.standardInput = inputPipe
         proc.standardError = FileHandle.nullDevice
         proc.environment = ProcessInfo.processInfo.environment
 
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            self?.handleData(data)
+            self?.parserQueue.async { self?.handleData(data) }
         }
 
         proc.terminationHandler = { [weak self] _ in
             guard let self = self else { return }
-            // Drain any remaining data
             self.outputPipe.fileHandleForReading.readabilityHandler = nil
-            let remaining = self.outputPipe.fileHandleForReading.readDataToEndOfFile()
-            if !remaining.isEmpty {
-                self.handleData(remaining)
-            }
+            // Drain remaining data on the serial queue to avoid racing with readabilityHandler
+            self.parserQueue.async {
+                let remaining = self.outputPipe.fileHandleForReading.readDataToEndOfFile()
+                if !remaining.isEmpty {
+                    self.handleData(remaining)
+                }
 
-            let finalResult = self.parser.finalResult()
-                ?? (isError: self.process?.terminationStatus != 0,
-                    text: nil as String?,
-                    costUsd: nil as Double?)
+                let finalResult = self.parser.finalResult()
+                    ?? (isError: self.process?.terminationStatus != 0,
+                        text: nil as String?,
+                        costUsd: nil as Double?)
 
-            DispatchQueue.main.async {
-                self.onComplete?(finalResult)
+                DispatchQueue.main.async {
+                    self.onComplete?(finalResult)
+                }
             }
         }
 
@@ -100,7 +104,7 @@ final class AgentProcess {
 
     /// Finds the claude binary, checking the known install path first then PATH.
     private static func findClaudeBinary() -> String? {
-        let knownPath = "/Users/brandon/.local/bin/claude"
+        let knownPath = NSHomeDirectory() + "/.local/bin/claude"
         if FileManager.default.isExecutableFile(atPath: knownPath) {
             return knownPath
         }
