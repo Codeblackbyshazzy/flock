@@ -35,6 +35,10 @@ class TabBarView: NSView, NSTextFieldDelegate {
     // Dynamic left padding to clear traffic light buttons in fullSizeContentView mode
     private var brandPadL: CGFloat {
         guard let window = window else { return 78 }
+        // In fullscreen the traffic lights are hidden -- use minimal padding
+        if window.styleMask.contains(.fullScreen) {
+            return 16
+        }
         let zoomBtn = window.standardWindowButton(.zoomButton)
             ?? window.standardWindowButton(.miniaturizeButton)
             ?? window.standardWindowButton(.closeButton)
@@ -56,6 +60,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
     // Vertical center aligned with traffic light buttons (not full bounds center)
     private var contentCenterY: CGFloat {
         guard let window = window,
+              !window.styleMask.contains(.fullScreen),
               let closeBtn = window.standardWindowButton(.closeButton) else {
             return bounds.height / 2
         }

@@ -39,6 +39,7 @@ class FlockWindow: NSWindow {
         backgroundColor = Theme.chrome
         minSize = NSSize(width: 600, height: 400)
         title = "Flock"
+        delegate = self
         center()
 
         NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
@@ -60,6 +61,29 @@ class FlockWindow: NSWindow {
     @objc private func themeChanged() {
         backgroundColor = Theme.chrome
     }
+
+    // MARK: - Fullscreen relayout
+
+    override func toggleFullScreen(_ sender: Any?) {
+        super.toggleFullScreen(sender)
+    }
+}
+
+extension FlockWindow: NSWindowDelegate {
+    func windowDidEnterFullScreen(_ notification: Notification) {
+        relayoutAfterFullScreenChange()
+    }
+
+    func windowDidExitFullScreen(_ notification: Notification) {
+        relayoutAfterFullScreenChange()
+    }
+
+    private func relayoutAfterFullScreenChange() {
+        rootView.resizeSubviews(withOldSize: rootView.bounds.size)
+        if let tabBar = rootView.tabBar as? TabBarView {
+            tabBar.needsDisplay = true
+        }
+    }
 }
 
 class FlockRootView: NSView {
@@ -79,6 +103,11 @@ class FlockRootView: NSView {
 
     private var titlebarInset: CGFloat {
         guard let window = window else { return 0 }
+        // In fullscreen the titlebar is hidden so contentLayoutRect fills the window.
+        // Use a fixed inset so the tab bar keeps a comfortable height.
+        if window.styleMask.contains(.fullScreen) {
+            return 22
+        }
         let frameInWindow = window.contentLayoutRect
         let fullFrame = NSRect(x: 0, y: 0, width: window.frame.width, height: window.frame.height)
         return fullFrame.height - frameInWindow.height
