@@ -31,6 +31,27 @@ class UsageTracker {
     private var limitsTimer: Timer?
     private let queue = DispatchQueue(label: "com.flock.usage", qos: .utility)
 
+    private func saveLimits(_ l: Limits) {
+        let d = UserDefaults.standard
+        d.set(l.fiveHourPercent, forKey: "usage.fiveHourPercent")
+        d.set(l.sevenDayPercent, forKey: "usage.sevenDayPercent")
+        d.set(l.fiveHourResetsAt, forKey: "usage.fiveHourResetsAt")
+        d.set(l.sevenDayResetsAt, forKey: "usage.sevenDayResetsAt")
+        d.set(l.available, forKey: "usage.available")
+    }
+
+    private func loadLimits() -> Limits {
+        let d = UserDefaults.standard
+        guard d.bool(forKey: "usage.available") else { return Limits() }
+        var l = Limits()
+        l.available = true
+        l.fiveHourPercent = d.double(forKey: "usage.fiveHourPercent")
+        l.sevenDayPercent = d.double(forKey: "usage.sevenDayPercent")
+        l.fiveHourResetsAt = d.string(forKey: "usage.fiveHourResetsAt")
+        l.sevenDayResetsAt = d.string(forKey: "usage.sevenDayResetsAt")
+        return l
+    }
+
     // Claude API pricing per million tokens (2025)
     private struct Pricing {
         let input: Double
@@ -51,6 +72,10 @@ class UsageTracker {
     private init() {}
 
     func start() {
+        limits = loadLimits()
+        if limits.available {
+            NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)
+        }
         refresh()
         fetchLimits()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
@@ -208,7 +233,29 @@ class UsageTracker {
 
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let data = data, error == nil,
-                  let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let http = response as? HTTPURLResponse else { return }
+
+            // 429 means rate-limited — treat as 100% usage
+            if http.statusCode == 429 {
+                let prev = self?.limits ?? Limits()
+                var capped = Limits()
+                capped.available = true
+                capped.fiveHourPercent = 1.0
+                capped.sevenDayPercent = prev.sevenDayPercent
+                capped.sevenDayResetsAt = prev.sevenDayResetsAt
+                capped.fiveHourResetsAt = prev.fiveHourResetsAt ?? self?.parseResetFromSessions()
+                let changed = capped != self?.limits
+                DispatchQueue.main.async {
+                    self?.limits = capped
+                    self?.saveLimits(capped)
+                    if changed {
+                        NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)
+                    }
+                }
+                return
+            }
+
+            guard http.statusCode == 200,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   json["error"] == nil else { return }
 
@@ -227,6 +274,7 @@ class UsageTracker {
             let changed = newLimits != self?.limits
             DispatchQueue.main.async {
                 self?.limits = newLimits
+                self?.saveLimits(newLimits)
                 if changed {
                     NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)
                 }
@@ -274,6 +322,7 @@ class UsageTracker {
                 return "\(pct)% used  ·  resets in \(resetLabel)"
             }
         }
+        if pct >= 100 { return "\(pct)% used  ·  rate limited" }
         return "\(pct)% used"
     }
 
@@ -283,5 +332,84 @@ class UsageTracker {
         if let d = f.date(from: str) { return d }
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return f.date(from: str)
+    }
+
+    /// Parse reset time from Claude Code session JSONL files.
+    /// Claude Code writes messages like "resets 5pm (America/New_York)" when rate limited.
+    private func parseResetFromSessions() -> String? {
+        let fm = FileManager.default
+        let home = fm.homeDirectoryForCurrentUser.path
+        let projectsDir = "\(home)/.claude/projects"
+
+        guard let projectDirs = try? fm.contentsOfDirectory(atPath: projectsDir) else { return nil }
+
+        // regex: "resets <time> (<timezone>)"
+        let pattern = try? NSRegularExpression(pattern: #"resets\s+(\d{1,2}(?::\d{2})?\s*[ap]m)\s+\(([^)]+)\)"#, options: .caseInsensitive)
+        guard let regex = pattern else { return nil }
+
+        var latestDate: Date?
+        var latestISO: String?
+
+        let todayStart = Calendar.current.startOfDay(for: Date())
+
+        for project in projectDirs {
+            let projectPath = "\(projectsDir)/\(project)"
+            guard let files = try? fm.contentsOfDirectory(atPath: projectPath) else { continue }
+
+            for file in files where file.hasSuffix(".jsonl") {
+                let filePath = "\(projectPath)/\(file)"
+                guard let attrs = try? fm.attributesOfItem(atPath: filePath),
+                      let modDate = attrs[.modificationDate] as? Date,
+                      modDate >= todayStart,
+                      let data = fm.contents(atPath: filePath),
+                      let content = String(data: data, encoding: .utf8) else { continue }
+
+                for line in content.split(separator: "\n") {
+                    guard line.contains("resets") else { continue }
+                    let str = String(line)
+                    let range = NSRange(str.startIndex..., in: str)
+                    if let match = regex.firstMatch(in: str, range: range),
+                       let timeRange = Range(match.range(at: 1), in: str),
+                       let tzRange = Range(match.range(at: 2), in: str) {
+                        let timeStr = String(str[timeRange])
+                        let tzStr = String(str[tzRange])
+                        if let resetDate = parseResetTime(timeStr, timezone: tzStr) {
+                            if latestDate == nil || resetDate > latestDate! {
+                                latestDate = resetDate
+                                let iso = ISO8601DateFormatter()
+                                iso.formatOptions = [.withInternetDateTime]
+                                latestISO = iso.string(from: resetDate)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return latestISO
+    }
+
+    private func parseResetTime(_ time: String, timezone tz: String) -> Date? {
+        guard let timeZone = TimeZone(identifier: tz) else { return nil }
+        let df = DateFormatter()
+        df.timeZone = timeZone
+        df.locale = Locale(identifier: "en_US_POSIX")
+
+        // Try "5pm", "5:30pm", "5 pm", "5:30 pm"
+        for fmt in ["h:mma", "ha", "h:mm a", "h a"] {
+            df.dateFormat = fmt
+            if let parsed = df.date(from: time.trimmingCharacters(in: .whitespaces)) {
+                // Combine with today's date in that timezone
+                var cal = Calendar.current
+                cal.timeZone = timeZone
+                let now = Date()
+                let hour = cal.component(.hour, from: parsed)
+                let minute = cal.component(.minute, from: parsed)
+                if let result = cal.date(bySettingHour: hour, minute: minute, second: 0, of: now) {
+                    return result
+                }
+            }
+        }
+        return nil
     }
 }
