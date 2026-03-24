@@ -251,15 +251,20 @@ class UsageTracker {
         return String(format: "%.1fM", Double(t) / 1_000_000)
     }
 
+    /// Convert raw utilization value to integer percentage.
+    /// The API returns a decimal (0.33 = 33%), but may exceed 1.0 when over limit.
+    private func utilPercent(_ raw: Double) -> Int {
+        return min(Int(raw * 100), 999)
+    }
+
     var formattedLimit: String? {
         guard limits.available else { return nil }
-        let pct = limits.fiveHourPercent
-        return "\(Int(pct))%"
+        return "\(utilPercent(limits.fiveHourPercent))%"
     }
 
     var statusText: String {
         guard limits.available else { return "" }
-        let pct = Int(limits.fiveHourPercent)
+        let pct = utilPercent(limits.fiveHourPercent)
         if let resetStr = limits.fiveHourResetsAt, let resetTime = parseISO8601(resetStr) {
             let remaining = resetTime.timeIntervalSinceNow
             if remaining > 0 {
