@@ -56,8 +56,8 @@ class UsageTracker {
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             self?.refresh()
         }
-        // Limits are rate-limited, so poll less frequently (every 2 min)
-        limitsTimer = Timer.scheduledTimer(withTimeInterval: 120, repeats: true) { [weak self] _ in
+        // Limits are rate-limited, poll every 5 min
+        limitsTimer = Timer.scheduledTimer(withTimeInterval: 300, repeats: true) { [weak self] _ in
             self?.fetchLimits()
         }
     }
@@ -208,7 +208,9 @@ class UsageTracker {
 
         let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
             guard let data = data, error == nil,
-                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+                  let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  json["error"] == nil else { return }
 
             var newLimits = Limits()
             newLimits.available = true
