@@ -154,10 +154,6 @@ class CommandPalette {
             CommandAction(name: "Toggle Agent Mode", shortcut: "⌘⇧A", category: "View") { [weak self] in
                 self?.paneManager?.toggleAgentMode()
             },
-            CommandAction(name: "Compression Stats", shortcut: "", category: "View") { [weak self] in
-                guard let win = self?.window, let pm = self?.paneManager else { return }
-                CompressionStatsPanel.show(on: win, paneManager: pm)
-            },
             CommandAction(name: "Split Horizontal", shortcut: "⌘D", category: "Panes") { [weak self] in
                 self?.paneManager?.splitActivePane(direction: .horizontal)
             },

@@ -1,0 +1,31 @@
+{
+  "": {
+    "dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/Termcast.d",
+    "object": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/Termcast.o",
+    "swift-dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/master.swiftdeps"
+  },
+  "/Users/brandon/flock/.build-fresh/checkouts/SwiftTerm/Sources/Termcast/AsciicastFormat.swift": {
+    "object": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/AsciicastFormat.swift.o",
+    "swiftmodule": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/AsciicastFormat~partial.swiftmodule",
+    "swift-dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/AsciicastFormat.swiftdeps",
+    "diagnostics": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/AsciicastFormat.dia"
+  },
+  "/Users/brandon/flock/.build-fresh/checkouts/SwiftTerm/Sources/Termcast/TermcastPlayer.swift": {
+    "object": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastPlayer.swift.o",
+    "swiftmodule": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastPlayer~partial.swiftmodule",
+    "swift-dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastPlayer.swiftdeps",
+    "diagnostics": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastPlayer.dia"
+  },
+  "/Users/brandon/flock/.build-fresh/checkouts/SwiftTerm/Sources/Termcast/TermcastRecorder.swift": {
+    "object": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastRecorder.swift.o",
+    "swiftmodule": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastRecorder~partial.swiftmodule",
+    "swift-dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastRecorder.swiftdeps",
+    "diagnostics": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/TermcastRecorder.dia"
+  },
+  "/Users/brandon/flock/.build-fresh/checkouts/SwiftTerm/Sources/Termcast/main.swift": {
+    "object": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/main.swift.o",
+    "swiftmodule": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/main~partial.swiftmodule",
+    "swift-dependencies": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/main.swiftdeps",
+    "diagnostics": "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/Termcast.build/main.dia"
+  }
+}

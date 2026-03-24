@@ -1,0 +1,3 @@
+module ArgumentParser {
+    header "/Users/brandon/flock/.build-fresh/arm64-apple-macosx/release/ArgumentParser.build/include/ArgumentParser-Swift.h"
+}

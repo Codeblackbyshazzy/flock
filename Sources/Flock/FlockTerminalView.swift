@@ -13,7 +13,6 @@ class FlockTerminalView: LocalProcessTerminalView {
         let text = String(bytes: bytes, encoding: .utf8)
         DispatchQueue.main.async { [weak self] in
             self?.owningPane?.didReceiveOutput(byteCount: count)
-            self?.owningPane?.compressor.feed(bytes[...])
             if let text {
                 self?.owningPane?.outputParser.feed(text)
             }
