@@ -141,14 +141,9 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
             self.manager?.tabBar?.update()
             self.manager?.statusBar?.update()
 
-            // Notify only when the app is in the background and only for errors
-            // Completion notifications are handled separately by sendCompletion
-            if !NSApp.isActive && state == .error && oldState != .error {
-                let paneName = self.customName ?? self.processTitle ?? self.type.label
-                let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
-                FlockNotifications.sendAgentStateChange(
-                    paneName: paneName, paneIndex: paneIdx, state: "Error detected")
-            }
+            // Completion notifications handled by sendCompletion
+            // State-change notifications removed -- error detection is too
+            // broad (matches "error:" in code output) and causes spam
         }
 
         // Terminal
