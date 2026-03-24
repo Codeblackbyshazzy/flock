@@ -258,6 +258,23 @@ class UsageTracker {
     var statusText: String {
         guard limits.available else { return "" }
         let pct = Int(limits.fiveHourPercent)
+        if let resetStr = limits.fiveHourResetsAt, let resetTime = parseISO8601(resetStr) {
+            let remaining = resetTime.timeIntervalSinceNow
+            if remaining > 0 {
+                let hours = Int(remaining) / 3600
+                let minutes = (Int(remaining) % 3600) / 60
+                let resetLabel = hours > 0 ? "\(hours)h \(minutes)m" : "\(minutes)m"
+                return "\(pct)% used  ·  resets in \(resetLabel)"
+            }
+        }
         return "\(pct)% used"
+    }
+
+    private func parseISO8601(_ str: String) -> Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        if let d = f.date(from: str) { return d }
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.date(from: str)
     }
 }
