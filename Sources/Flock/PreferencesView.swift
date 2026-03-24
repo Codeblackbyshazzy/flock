@@ -14,12 +14,13 @@ class PreferencesView: NSView {
     private let activitySwitch = NSSwitch()
     private let soundSwitch = NSSwitch()
     private let memorySwitch = NSSwitch()
+    private let usageSwitch = NSSwitch()
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     // MARK: - Layout Constants
 
     private let panelWidth: CGFloat = 480
-    private let panelHeight: CGFloat = 480
+    private let panelHeight: CGFloat = 512
     private let labelX: CGFloat = 24
     private let controlX: CGFloat = 160
     private let controlWidth: CGFloat = 200
@@ -31,7 +32,7 @@ class PreferencesView: NSView {
 
     static func show(on window: NSWindow) {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 512),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: true
@@ -40,7 +41,7 @@ class PreferencesView: NSView {
         panel.isFloatingPanel = false
         panel.becomesKeyOnlyIfNeeded = false
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 480))
+        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 512))
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
@@ -183,6 +184,24 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // Usage Tracker
+        y = addRow(y: y)
+        addLabel("Usage Tracker", y: y)
+
+        usageSwitch.state = settings.showUsageTracker ? .on : .off
+        usageSwitch.target = self
+        usageSwitch.action = #selector(usageChanged(_:))
+        usageSwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(usageSwitch)
+
+        let usageHint = NSTextField(labelWithString: "Show today's cost + tokens in status bar")
+        usageHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        usageHint.textColor = Theme.textTertiary
+        usageHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 240, height: 14)
+        addSubview(usageHint)
+
+        y += rowHeight
+
         // ── Memory ──
         y += sectionGap - rowHeight
         y = addSectionHeader("Memory", y: y)
@@ -284,6 +303,10 @@ class PreferencesView: NSView {
 
     @objc private func soundChanged(_ sender: NSSwitch) {
         Settings.shared.soundEffectsEnabled = (sender.state == .on)
+    }
+
+    @objc private func usageChanged(_ sender: NSSwitch) {
+        Settings.shared.showUsageTracker = (sender.state == .on)
     }
 
     @objc private func memoryChanged(_ sender: NSSwitch) {

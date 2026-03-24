@@ -23,6 +23,7 @@ class Settings {
         case globalHotkeyModifiers
         case maxParallelAgents
         case memoryEnabled
+        case showUsageTracker
     }
 
     var themeId: String {
@@ -99,6 +100,14 @@ class Settings {
             return defaults.bool(forKey: Key.memoryEnabled.rawValue)
         }
         set { defaults.set(newValue, forKey: Key.memoryEnabled.rawValue); post(.memoryEnabled) }
+    }
+
+    var showUsageTracker: Bool {
+        get {
+            if defaults.object(forKey: Key.showUsageTracker.rawValue) == nil { return false }
+            return defaults.bool(forKey: Key.showUsageTracker.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.showUsageTracker.rawValue); post(.showUsageTracker) }
     }
 
     // ANSI color overrides per theme

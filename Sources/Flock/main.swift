@@ -41,6 +41,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             TaskStore.shared.markFailed(task, error: "Interrupted by app restart")
         }
 
+        // Usage tracker
+        if Settings.shared.showUsageTracker {
+            UsageTracker.shared.start()
+        }
+
         // Global hotkey
         if Settings.shared.globalHotkeyEnabled {
             hotkeyManager = GlobalHotkeyManager(window: mainWindow)

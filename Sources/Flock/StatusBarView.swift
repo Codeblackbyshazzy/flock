@@ -5,6 +5,7 @@ class StatusBarView: NSView {
     private let label = NSTextField(labelWithString: "")
     private let durationLabel = NSTextField(labelWithString: "")
     private let broadcastBadge = NSTextField(labelWithString: "")
+    private let usageLabel = NSTextField(labelWithString: "")
     private var lastText: String = ""
     private var durationTimer: Timer?
 
@@ -32,6 +33,12 @@ class StatusBarView: NSView {
         broadcastBadge.isHidden = true
         addSubview(broadcastBadge)
 
+        usageLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        usageLabel.textColor = Theme.textTertiary
+        usageLabel.alignment = .center
+        usageLabel.isHidden = !Settings.shared.showUsageTracker
+        addSubview(usageLabel)
+
         update()
 
         // Timer for live command duration
@@ -43,14 +50,31 @@ class StatusBarView: NSView {
                                                name: Theme.themeDidChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(taskStoreChanged),
                                                name: TaskStore.didChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(usageUpdated),
+                                               name: UsageTracker.didUpdate, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(settingsChanged),
+                                               name: Settings.didChange, object: nil)
     }
 
     @objc private func taskStoreChanged() { update() }
+    @objc private func usageUpdated() { updateUsage() }
+    @objc private func settingsChanged() {
+        let show = Settings.shared.showUsageTracker
+        usageLabel.isHidden = !show
+        if show {
+            UsageTracker.shared.start()
+        } else {
+            UsageTracker.shared.stop()
+        }
+        updateUsage()
+        resizeSubviews(withOldSize: bounds.size)
+    }
 
     @objc private func themeChanged() {
         layer?.backgroundColor = Theme.chrome.cgColor
         label.textColor = Theme.textTertiary
         durationLabel.textColor = Theme.textTertiary
+        usageLabel.textColor = Theme.textTertiary
         needsDisplay = true
     }
 
@@ -90,6 +114,7 @@ class StatusBarView: NSView {
         broadcastBadge.isHidden = !(mgr.isBroadcasting)
 
         updateDuration()
+        updateUsage()
         needsDisplay = true
     }
 
@@ -118,6 +143,27 @@ class StatusBarView: NSView {
         }
     }
 
+    private func updateUsage() {
+        guard Settings.shared.showUsageTracker else {
+            usageLabel.isHidden = true
+            return
+        }
+        usageLabel.isHidden = false
+        let text = UsageTracker.shared.statusText
+        if text != usageLabel.stringValue {
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = Theme.Anim.fast
+                self.usageLabel.animator().alphaValue = 0
+            }, completionHandler: { [weak self] in
+                self?.usageLabel.stringValue = text
+                NSAnimationContext.runAnimationGroup { ctx in
+                    ctx.duration = Theme.Anim.fast
+                    self?.usageLabel.animator().alphaValue = 1
+                }
+            })
+        }
+    }
+
     override func resizeSubviews(withOldSize oldSize: NSSize) {
         let pad = Theme.Space.lg
         let labelH: CGFloat = 16
@@ -125,7 +171,15 @@ class StatusBarView: NSView {
         broadcastBadge.frame = NSRect(x: pad, y: labelY, width: 70, height: labelH)
         let labelX = (paneManager?.isBroadcasting == true) ? pad + 76 : pad
         label.frame = NSRect(x: labelX, y: labelY, width: 200, height: labelH)
-        durationLabel.frame = NSRect(x: bounds.width - 200 - pad, y: labelY, width: 200, height: labelH)
+
+        let usageW: CGFloat = 180
+        let durationW: CGFloat = 200
+        if Settings.shared.showUsageTracker {
+            usageLabel.frame = NSRect(x: bounds.width / 2 - usageW / 2, y: labelY, width: usageW, height: labelH)
+            durationLabel.frame = NSRect(x: bounds.width - durationW - pad, y: labelY, width: durationW, height: labelH)
+        } else {
+            durationLabel.frame = NSRect(x: bounds.width - durationW - pad, y: labelY, width: durationW, height: labelH)
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
