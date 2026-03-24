@@ -142,16 +142,20 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
             self.manager?.statusBar?.update()
 
             // Notify on important state changes in unfocused panes
+            // Only notify if the pane was actively working (not just idle -> waiting)
             if !self.isFocused {
-                let paneName = self.customName ?? self.processTitle ?? self.type.label
-                let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
-                if state == .waiting && oldState != .waiting {
-                    FlockNotifications.sendAgentStateChange(
-                        paneName: paneName, paneIndex: paneIdx, state: "Waiting for your input")
-                    SoundEffects.playChime()
-                } else if state == .error && oldState != .error {
-                    FlockNotifications.sendAgentStateChange(
-                        paneName: paneName, paneIndex: paneIdx, state: "Error detected")
+                let wasActive = [AgentState.thinking, .writing, .running, .reading].contains(oldState)
+                if wasActive {
+                    let paneName = self.customName ?? self.processTitle ?? self.type.label
+                    let paneIdx = self.manager?.panes.firstIndex(where: { $0 === self }) ?? 0
+                    if state == .waiting {
+                        FlockNotifications.sendAgentStateChange(
+                            paneName: paneName, paneIndex: paneIdx, state: "Waiting for your input")
+                        SoundEffects.playChime()
+                    } else if state == .error {
+                        FlockNotifications.sendAgentStateChange(
+                            paneName: paneName, paneIndex: paneIdx, state: "Error detected")
+                    }
                 }
             }
         }

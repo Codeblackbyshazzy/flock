@@ -5,30 +5,49 @@ enum FlockNotifications {
     static let focusPaneRequested = Notification.Name("FlockFocusPaneRequested")
 
     private static var useNative = false
+    /// Debounce: track last notification per pane to suppress duplicates
+    private static var lastNotification: [String: (message: String, time: Date)] = [:]
+    private static let debounceInterval: TimeInterval = 5.0
 
     static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            useNative = granted
+            DispatchQueue.main.async { useNative = granted }
         }
     }
 
     static func setup() {
         // Check if we already have permission (e.g. from a previous launch)
         UNUserNotificationCenter.current().getNotificationSettings { settings in
-            useNative = settings.authorizationStatus == .authorized
+            DispatchQueue.main.async {
+                if settings.authorizationStatus == .authorized {
+                    useNative = true
+                } else if settings.authorizationStatus == .notDetermined {
+                    // Auto-request on first launch
+                    requestPermission()
+                }
+            }
         }
     }
 
     static func sendCompletion(paneName: String, paneIndex: Int, duration: TimeInterval?) {
         let body = formatDuration(duration)
-        send(title: "Flock", body: "\(paneName) — \(body)")
+        send(title: "Flock", body: "\(paneName) — \(body)", key: "pane-\(paneIndex)")
     }
 
     static func sendAgentStateChange(paneName: String, paneIndex: Int, state: String) {
-        send(title: "Flock", body: "\(paneName) — \(state)")
+        send(title: "Flock", body: "\(paneName) — \(state)", key: "pane-\(paneIndex)")
     }
 
-    private static func send(title: String, body: String) {
+    private static func send(title: String, body: String, key: String) {
+        // Debounce: skip if same message for same pane within interval
+        let now = Date()
+        if let last = lastNotification[key],
+           last.message == body,
+           now.timeIntervalSince(last.time) < debounceInterval {
+            return
+        }
+        lastNotification[key] = (message: body, time: now)
+
         if useNative {
             let content = UNMutableNotificationContent()
             content.title = title
