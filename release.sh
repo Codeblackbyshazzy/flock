@@ -132,12 +132,7 @@ Parallel Claude Code terminal multiplexer for macOS.
 
 ### Install
 
-\`\`\`
-brew tap divagation/flock
-brew install --cask flockapp
-\`\`\`
-
-Or download \`${ZIP_NAME}\`, unzip, and drag to Applications.
+Download the \`.pkg\` installer or \`${ZIP_NAME}\`, unzip, and drag to Applications.
 
 ### SHA256
 \`\`\`
@@ -152,44 +147,5 @@ gh release create "v${VERSION}" "$ZIP_NAME" "$PKG_NAME" \
 echo ""
 echo "Release created: https://github.com/${REPO}/releases/tag/v${VERSION}"
 
-# ─── Update Homebrew tap ───
 echo ""
-echo "Updating Homebrew cask..."
-
-TAP_DIR=$(mktemp -d)
-git clone --depth 1 https://github.com/Divagation/homebrew-flock.git "$TAP_DIR"
-
-cat > "$TAP_DIR/Casks/flockapp.rb" << CASK
-cask "flockapp" do
-  version "${VERSION}"
-  sha256 "${SHA256}"
-
-  url "https://github.com/Divagation/flock/releases/download/v#{version}/Flock-#{version}-mac.zip"
-  name "Flock"
-  desc "Parallel Claude Code terminal multiplexer"
-  homepage "https://github.com/Divagation/flock"
-
-  depends_on macos: ">= :ventura"
-
-  app "Flock.app"
-
-  binary "#{appdir}/Flock.app/Contents/MacOS/Flock", target: "flock"
-
-  zap trash: [
-    "~/Library/Preferences/com.baa.flock.plist",
-    "~/Library/Saved Application State/com.baa.flock.savedState",
-  ]
-end
-CASK
-
-cd "$TAP_DIR"
-git add -A
-git commit -m "Update Flock to v${VERSION}"
-git push
-cd -
-rm -rf "$TAP_DIR"
-
-echo ""
-echo "Done. Install with:"
-echo "  brew tap divagation/flock"
-echo "  brew install --cask flockapp"
+echo "Done. Release live at: https://github.com/${REPO}/releases/tag/v${VERSION}"
