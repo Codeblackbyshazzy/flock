@@ -31,5 +31,7 @@
   <string>Flock terminal sessions need file access.</string>
   <key>NSRemovableVolumesUsageDescription</key>
   <string>Flock terminal sessions need file access.</string>
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Flock uses AppleScript to display notifications.</string>
 </dict>
 </plist>

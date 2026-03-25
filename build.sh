@@ -3,6 +3,8 @@ set -e
 
 cd "$(dirname "$0")"
 
+SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Brandon Anderson (U74MP7DDQC)}"
+
 echo "Building Flock..."
 swift build -c release 2>&1
 
@@ -16,8 +18,20 @@ cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/zsh-autosuggestions.zsh "$APP/Contents/Resources/zsh-autosuggestions.zsh"
 cp Info.plist "$APP/Contents/Info.plist"
 
-# Re-sign (ad-hoc) so macOS doesn't complain
-codesign --force --sign - --deep "$APP"
+# Sign with Developer ID + hardened runtime
+codesign --force --sign "$SIGNING_IDENTITY" \
+    --options runtime \
+    --entitlements Flock.entitlements \
+    --timestamp \
+    "$APP/Contents/MacOS/Flock"
+
+codesign --force --sign "$SIGNING_IDENTITY" \
+    --options runtime \
+    --entitlements Flock.entitlements \
+    --timestamp \
+    "$APP"
+
+codesign --verify --deep --strict "$APP"
 
 # Install to /Applications (rm first — cp -R can't overwrite a running app)
 rm -rf /Applications/Flock.app
