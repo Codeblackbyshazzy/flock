@@ -8,48 +8,64 @@
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Instrument+Sans:ital,wght@0,400..700;1,400..700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
   <style>
     :root {
-      --cream: #F5F3EF;
-      --warm-white: #FAFAF8;
+      --bg: #F5F0E8;
+      --bg-alt: #EDE8DF;
+      --bg-warm: #FFF8E8;
       --ink: #1A1917;
       --ink-soft: #6E6B65;
       --ink-faint: #A8A49E;
-      --border: #E6E3DD;
-      --coral: #E2603C;
-      --coral-dark: #C94E2E;
-      --coral-glow: rgba(226, 96, 60, 0.12);
+      --accent: #E2603C;
+      --accent-dark: #C94E2E;
       --green: #5B9A6B;
       --blue: #4A7FBF;
+      --border: #C8C0B4;
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    html {
-      scroll-behavior: smooth;
-      -webkit-font-smoothing: antialiased;
-    }
+    html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Instrument Sans', system-ui, sans-serif;
-      background: var(--cream);
+      font-family: 'Silkscreen', cursive;
+      background: var(--bg);
       color: var(--ink);
       overflow-x: hidden;
     }
 
-    /* === GRAIN OVERLAY === */
+    /* === PIXEL GRID OVERLAY === */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      opacity: 0.025;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-image:
+        linear-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.018) 1px, transparent 1px);
+      background-size: 8px 8px;
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* === SCANLINE OVERLAY === */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.006) 3px,
+        rgba(0,0,0,0.006) 6px
+      );
       pointer-events: none;
       z-index: 9999;
     }
 
-    /* === HERO === */
+    /* ============================================
+       HERO
+       ============================================ */
     .hero {
       min-height: 100vh;
       display: flex;
@@ -58,43 +74,109 @@
       justify-content: center;
       padding: 2rem;
       position: relative;
-    }
-
-    .hero-bg {
-      position: absolute;
-      inset: 0;
       overflow: hidden;
     }
 
-    .hero-bg .circle {
+    /* --- PIXEL BIRDS --- */
+    .birds {
       position: absolute;
-      border-radius: 50%;
-      opacity: 0.04;
-      border: 1px solid var(--ink);
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
     }
 
-    .hero-bg .circle:nth-child(1) {
-      width: 600px; height: 600px;
-      top: 10%; left: -10%;
-      animation: float 20s ease-in-out infinite;
-    }
-    .hero-bg .circle:nth-child(2) {
-      width: 400px; height: 400px;
-      bottom: 5%; right: -5%;
-      animation: float 15s ease-in-out infinite reverse;
-    }
-    .hero-bg .circle:nth-child(3) {
-      width: 200px; height: 200px;
-      top: 20%; right: 20%;
-      animation: float 12s ease-in-out infinite 3s;
+    .bird-path { position: absolute; left: 0; }
+    .b1 { top: 28%; animation: fly1 18s linear infinite; }
+    .b2 { top: 22%; animation: fly2 20s linear -3s infinite; }
+    .b3 { top: 36%; animation: fly1 19.5s linear -2s infinite; }
+    .b4 { top: 16%; animation: fly2 22s linear -6s infinite; }
+    .b5 { top: 44%; animation: fly1 21s linear -5s infinite; }
+    .b6 { top: 52%; animation: fly2 23s linear -8s infinite; }
+    .b7 { top: 10%; animation: fly1 25s linear -10s infinite; }
+
+    .b1 .pixel-bird { transform: scale(7); }
+    .b2 .pixel-bird { transform: scale(5); animation-duration: 0.45s; }
+    .b3 .pixel-bird { transform: scale(6); animation-duration: 0.35s; }
+    .b4 .pixel-bird { transform: scale(4); animation-duration: 0.5s; }
+    .b5 .pixel-bird { transform: scale(4); animation-duration: 0.38s; }
+    .b6 .pixel-bird { transform: scale(3); animation-duration: 0.55s; }
+    .b7 .pixel-bird { transform: scale(3); animation-duration: 0.48s; }
+
+    @keyframes fly1 {
+      0%   { transform: translateX(-100px) translateY(0); }
+      25%  { transform: translateX(25vw)   translateY(-12px); }
+      50%  { transform: translateX(50vw)   translateY(5px); }
+      75%  { transform: translateX(75vw)   translateY(-8px); }
+      100% { transform: translateX(calc(100vw + 100px)) translateY(0); }
     }
 
-    @keyframes float {
-      0%, 100% { transform: translate(0, 0) rotate(0deg); }
-      33% { transform: translate(20px, -30px) rotate(2deg); }
-      66% { transform: translate(-15px, 15px) rotate(-1deg); }
+    @keyframes fly2 {
+      0%   { transform: translateX(-100px) translateY(0); }
+      25%  { transform: translateX(25vw)   translateY(10px); }
+      50%  { transform: translateX(50vw)   translateY(-6px); }
+      75%  { transform: translateX(75vw)   translateY(12px); }
+      100% { transform: translateX(calc(100vw + 100px)) translateY(0); }
     }
 
+    .pixel-bird {
+      width: 1px;
+      height: 1px;
+      background: transparent;
+      animation: flap 0.4s steps(1) infinite;
+    }
+
+    /* Classic V-birds, 7x3 pixels
+       Up:  X . . . . . X    Down: . . X X X . .
+            . X . . . X .          . X . . . X .
+            . . X X X . .          X . . . . . X  */
+    @keyframes flap {
+      0%, 100% {
+        box-shadow:
+          0px 0px 0 0 var(--ink),
+          6px 0px 0 0 var(--ink),
+          1px 1px 0 0 var(--ink),
+          5px 1px 0 0 var(--ink),
+          2px 2px 0 0 var(--ink),
+          3px 2px 0 0 var(--ink),
+          4px 2px 0 0 var(--ink);
+      }
+      50% {
+        box-shadow:
+          2px 0px 0 0 var(--ink),
+          3px 0px 0 0 var(--ink),
+          4px 0px 0 0 var(--ink),
+          1px 1px 0 0 var(--ink),
+          5px 1px 0 0 var(--ink),
+          0px 2px 0 0 var(--ink),
+          6px 2px 0 0 var(--ink);
+      }
+    }
+
+    /* --- PIXEL STARS --- */
+    .pixel-star {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: var(--accent);
+      box-shadow:
+        0 -2px 0 var(--accent),
+        2px 0 0 var(--accent),
+        0 2px 0 var(--accent),
+        -2px 0 0 var(--accent);
+      pointer-events: none;
+    }
+    .star-1 { top: 12%; left: 10%; animation: twinkle 3s ease infinite; }
+    .star-2 { top: 20%; right: 12%; animation: twinkle 2.5s ease 0.8s infinite; }
+    .star-3 { bottom: 28%; left: 18%; animation: twinkle 4s ease 1.5s infinite; }
+    .star-4 { top: 45%; right: 22%; animation: twinkle 3.5s ease 0.3s infinite; }
+    .star-5 { top: 8%; left: 45%; animation: twinkle 2.8s ease 2s infinite; }
+    .star-6 { bottom: 18%; right: 8%; animation: twinkle 3.2s ease 1s infinite; }
+
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.15; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.8); }
+    }
+
+    /* --- HERO CONTENT --- */
     .hero-content {
       position: relative;
       z-index: 1;
@@ -103,44 +185,37 @@
     }
 
     .hero-icon {
-      width: 96px;
-      height: 96px;
-      margin: 0 auto 2rem;
+      width: 80px; height: 80px;
+      margin: 0 auto 1.5rem;
       image-rendering: pixelated;
-      animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.08));
+      animation: pop-in 0.4s steps(6) both;
+      filter: drop-shadow(4px 4px 0 rgba(0,0,0,0.1));
     }
 
-    @keyframes popIn {
-      from { opacity: 0; transform: scale(0.5) translateY(20px); }
+    @keyframes pop-in {
+      from { opacity: 0; transform: scale(0.3) translateY(24px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
     }
 
     .hero h1 {
-      font-family: 'DM Serif Display', Georgia, serif;
-      font-size: clamp(4rem, 10vw, 7.5rem);
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(2.5rem, 8vw, 5rem);
       font-weight: 400;
-      letter-spacing: -0.04em;
-      line-height: 0.9;
+      letter-spacing: 0.08em;
+      line-height: 1.2;
       margin-bottom: 1.5rem;
-      animation: fadeUp 0.8s ease both 0.1s;
-    }
-
-    .hero h1 .dot {
-      color: var(--coral);
+      animation: pop-in 0.4s steps(6) 0.1s both;
+      text-shadow: 4px 4px 0 rgba(226, 96, 60, 0.25);
     }
 
     .hero .tagline {
-      font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+      font-family: 'VT323', monospace;
+      font-size: clamp(1.2rem, 2.2vw, 1.6rem);
       color: var(--ink-soft);
-      line-height: 1.5;
-      max-width: 480px;
+      line-height: 1.6;
+      max-width: 520px;
       margin: 0 auto 2.5rem;
-      font-weight: 400;
-      animation: fadeUp 0.8s ease both 0.2s;
-    }
-
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(24px); }
+      animation: pop-in 0.4s steps(6) 0.2s both;
     }
 
     .hero-actions {
@@ -148,309 +223,261 @@
       gap: 1rem;
       justify-content: center;
       flex-wrap: wrap;
-      animation: fadeUp 0.8s ease both 0.35s;
+      animation: pop-in 0.4s steps(6) 0.35s both;
     }
 
+    /* --- GAME BUTTONS --- */
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.85rem 1.75rem;
-      border-radius: 100px;
-      font-family: 'Instrument Sans', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
+      gap: 8px;
+      padding: 12px 24px;
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.85rem;
       text-decoration: none;
-      transition: all 0.2s ease;
       cursor: pointer;
-      border: none;
+      border: 3px solid var(--ink);
+      transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
+      image-rendering: pixelated;
     }
 
     .btn-primary {
       background: var(--ink);
-      color: var(--cream);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1);
+      color: var(--bg);
+      box-shadow: 5px 5px 0 var(--accent);
     }
-
     .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 2px 6px rgba(0,0,0,0.1);
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 var(--accent);
+    }
+    .btn-primary:active {
+      transform: translate(5px, 5px);
+      box-shadow: 0 0 0 var(--accent);
     }
 
     .btn-ghost {
-      background: transparent;
+      background: var(--bg);
       color: var(--ink);
-      border: 1.5px solid var(--border);
+      box-shadow: 5px 5px 0 var(--border);
     }
-
     .btn-ghost:hover {
-      border-color: var(--ink-soft);
-      background: var(--warm-white);
+      transform: translate(-2px, -2px);
+      box-shadow: 7px 7px 0 var(--border);
+    }
+    .btn-ghost:active {
+      transform: translate(5px, 5px);
+      box-shadow: 0 0 0 var(--border);
     }
 
     .install-hint {
       margin-top: 2rem;
-      animation: fadeUp 0.8s ease both 0.5s;
+      animation: pop-in 0.4s steps(6) 0.5s both;
     }
 
     .install-cmd {
       display: inline-flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 12px;
       background: var(--ink);
       color: var(--ink-faint);
-      padding: 0.65rem 1.25rem;
-      border-radius: 10px;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.8rem;
+      padding: 10px 18px;
+      font-family: 'VT323', monospace;
+      font-size: 1.15rem;
       cursor: pointer;
-      transition: all 0.2s ease;
-      border: none;
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.2);
+      transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
     }
-
     .install-cmd:hover {
-      background: #2a2926;
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 rgba(0,0,0,0.2);
     }
-
-    .install-cmd code {
-      color: #e8e4de;
+    .install-cmd:active {
+      transform: translate(4px, 4px);
+      box-shadow: 0 0 0 rgba(0,0,0,0.2);
     }
-
-    .install-cmd .copy-icon {
-      opacity: 0.4;
-      transition: opacity 0.2s;
-    }
-
-    .install-cmd:hover .copy-icon {
-      opacity: 0.8;
-    }
+    .install-cmd code { color: #e8e4de; }
+    .install-cmd .prompt-char { color: var(--accent); }
+    .install-cmd .copy-icon { opacity: 0.5; font-family: 'Silkscreen', cursive; font-size: 0.65rem; }
 
     .scroll-hint {
       position: absolute;
       bottom: 2rem;
       left: 50%;
       transform: translateX(-50%);
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.45rem;
       color: var(--ink-faint);
-      font-size: 0.75rem;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      animation: bob 2s ease-in-out infinite;
+      letter-spacing: 0.15em;
+      animation: bob 1.5s steps(4) infinite;
     }
 
     @keyframes bob {
       0%, 100% { transform: translateX(-50%) translateY(0); }
-      50% { transform: translateX(-50%) translateY(6px); }
+      50% { transform: translateX(-50%) translateY(8px); }
     }
 
-    /* === SECTION COMMON === */
-    section {
-      padding: 6rem 2rem;
+    /* ============================================
+       DITHERED DIVIDERS
+       ============================================ */
+    .dither {
+      height: 8px;
+      opacity: 0.07;
+      background-image:
+        linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%),
+        linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%);
+      background-size: 4px 4px;
+      background-position: 0 0, 2px 2px;
     }
 
-    .section-inner {
-      max-width: 960px;
-      margin: 0 auto;
+    .dither-accent {
+      height: 6px;
+      opacity: 0.12;
+      background-image:
+        linear-gradient(45deg, var(--accent) 25%, transparent 25%, transparent 75%, var(--accent) 75%),
+        linear-gradient(45deg, var(--accent) 25%, transparent 25%, transparent 75%, var(--accent) 75%);
+      background-size: 4px 4px;
+      background-position: 0 0, 2px 2px;
     }
+
+    /* ============================================
+       SECTIONS COMMON
+       ============================================ */
+    section { padding: 5rem 2rem; }
+    .section-inner { max-width: 920px; margin: 0 auto; }
 
     .section-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.7rem;
-      letter-spacing: 0.15em;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.5rem;
+      letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: var(--coral);
-      margin-bottom: 1rem;
-      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 1.25rem;
     }
 
     .section-title {
-      font-family: 'DM Serif Display', Georgia, serif;
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 400;
-      letter-spacing: -0.03em;
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(0.9rem, 2.5vw, 1.4rem);
+      line-height: 1.8;
       margin-bottom: 1rem;
-      line-height: 1.1;
+      text-shadow: 3px 3px 0 rgba(226, 96, 60, 0.12);
     }
 
     .section-subtitle {
+      font-family: 'VT323', monospace;
       color: var(--ink-soft);
-      font-size: 1.1rem;
-      line-height: 1.6;
+      font-size: 1.25rem;
+      line-height: 1.5;
       max-width: 560px;
       margin-bottom: 3rem;
     }
 
-    /* === THE PITCH === */
-    .pitch {
-      background: var(--warm-white);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-
-    .pitch-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 1px;
-      background: var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    @media (min-width: 640px) {
-      .pitch-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .pitch-card {
-      background: var(--warm-white);
-      padding: 2rem;
-      position: relative;
-      transition: background 0.3s ease;
-    }
-
-    .pitch-card:hover {
-      background: #FFFFFF;
-    }
-
-    .pitch-card .emoji {
-      font-size: 1.5rem;
-      margin-bottom: 0.75rem;
-      display: block;
-    }
-
-    .pitch-card h3 {
-      font-family: 'DM Serif Display', Georgia, serif;
-      font-size: 1.2rem;
-      font-weight: 400;
-      margin-bottom: 0.5rem;
-    }
-
-    .pitch-card p {
-      color: var(--ink-soft);
-      font-size: 0.9rem;
-      line-height: 1.55;
-    }
-
-    /* === DEMO SECTION === */
-    .demo {
-      text-align: center;
-    }
+    /* ============================================
+       DEMO TERMINAL
+       ============================================ */
+    .demo { text-align: center; }
 
     .demo-window {
       max-width: 800px;
       margin: 0 auto;
-      background: var(--ink);
-      border-radius: 12px;
+      background: #0e0e0c;
+      border: 4px solid var(--ink);
+      box-shadow: 8px 8px 0 rgba(0,0,0,0.18);
+      position: relative;
       overflow: hidden;
-      box-shadow:
-        0 4px 6px rgba(0,0,0,0.04),
-        0 12px 40px rgba(0,0,0,0.12),
-        0 0 0 1px rgba(0,0,0,0.06);
+    }
+
+    /* CRT lines on demo */
+    .demo-window::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.06) 2px,
+        rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+      z-index: 5;
     }
 
     .demo-titlebar {
-      height: 40px;
-      background: #2a2926;
+      height: 32px;
+      background: #1a1a18;
       display: flex;
       align-items: center;
-      padding: 0 14px;
-      gap: 7px;
+      padding: 0 12px;
+      gap: 6px;
+      border-bottom: 3px solid #282826;
     }
 
-    .demo-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-    }
-
+    .demo-dot { width: 10px; height: 10px; }
     .demo-dot:nth-child(1) { background: #FF5F57; }
     .demo-dot:nth-child(2) { background: #FEBC2E; }
     .demo-dot:nth-child(3) { background: #28C840; }
 
     .demo-body {
-      padding: 1.5rem;
+      padding: 10px;
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      min-height: 320px;
+      gap: 4px;
+      min-height: 300px;
     }
 
     .demo-pane {
-      background: #1e1d1b;
-      border-radius: 8px;
-      border: 1px solid #333;
-      padding: 12px;
+      background: #080807;
+      border: 2px solid #252523;
+      padding: 10px;
       text-align: left;
-      position: relative;
-      overflow: hidden;
     }
 
     .demo-pane-header {
       display: flex;
       align-items: center;
       gap: 6px;
-      margin-bottom: 10px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #2a2926;
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #1a1a18;
     }
 
     .demo-pane-num {
-      width: 16px;
-      height: 16px;
-      border-radius: 3px;
-      background: #333;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 9px;
-      color: #888;
-      font-weight: 600;
+      font-family: 'VT323', monospace;
+      font-size: 15px;
+      color: #444;
     }
-
-    .demo-pane.active .demo-pane-num {
-      background: var(--coral-glow);
-      color: var(--coral);
-    }
+    .demo-pane.active .demo-pane-num { color: var(--accent); }
 
     .demo-pane-label {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 10px;
-      color: #666;
+      font-family: 'VT323', monospace;
+      font-size: 14px;
+      color: #333;
     }
 
     .demo-line {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      line-height: 1.7;
-      color: #888;
+      font-family: 'VT323', monospace;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #555;
       opacity: 0;
-      animation: typeIn 0.3s ease forwards;
+      animation: type-in 0.15s steps(2) forwards;
     }
-
-    .demo-line .prompt { color: var(--coral); }
-    .demo-line .cmd { color: #c8c4be; }
+    .demo-line .prompt { color: var(--accent); }
+    .demo-line .cmd { color: #bbb; }
     .demo-line .success { color: var(--green); }
     .demo-line .file { color: var(--blue); }
     .demo-line .cursor {
       display: inline-block;
-      width: 7px;
-      height: 14px;
-      background: var(--coral);
+      width: 8px; height: 15px;
+      background: var(--accent);
       vertical-align: middle;
       margin-left: 2px;
-      animation: blink 1s step-end infinite;
+      animation: blink 0.8s steps(1) infinite;
     }
 
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
-
-    @keyframes typeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes type-in { from { opacity: 0; } to { opacity: 1; } }
 
     .demo-pane .demo-line:nth-child(2) { animation-delay: 0.3s; }
     .demo-pane .demo-line:nth-child(3) { animation-delay: 0.6s; }
@@ -458,142 +485,272 @@
     .demo-pane .demo-line:nth-child(5) { animation-delay: 1.2s; }
     .demo-pane .demo-line:nth-child(6) { animation-delay: 1.5s; }
 
-    /* === SHORTCUTS === */
-    .shortcuts {
-      background: var(--warm-white);
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
+    /* ============================================
+       TICKER MARQUEE
+       ============================================ */
+    .ticker {
+      background: var(--ink);
+      color: var(--bg);
+      padding: 14px 0;
+      overflow: hidden;
+      border-top: 3px solid var(--accent);
+      border-bottom: 3px solid var(--accent);
     }
 
-    .shortcut-table {
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      animation: marquee 30s linear infinite;
+    }
+
+    .ticker-track span {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.55rem;
+      letter-spacing: 0.12em;
+      white-space: nowrap;
+      padding: 0 1rem;
+    }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ============================================
+       FEATURES / PITCH
+       ============================================ */
+    .pitch { background: var(--bg-alt); }
+
+    .pitch-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0;
-      max-width: 520px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: var(--border);
+      border: 3px solid var(--ink);
     }
 
-    @media (min-width: 640px) {
-      .shortcut-table {
-        grid-template-columns: 1fr 1fr 1fr 1fr;
-      }
+    .pitch-card {
+      border: 1.5px solid var(--ink);
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+      transition:
+        transform 0.05s steps(1),
+        box-shadow 0.05s steps(1),
+        background 0.05s steps(1);
     }
 
-    .shortcut-item {
-      background: var(--warm-white);
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      transition: background 0.2s;
-      border: 0.5px solid var(--border);
+    .pitch-card:hover {
+      transform: translate(-3px, -3px);
+      box-shadow: 3px 3px 0 var(--accent);
+      z-index: 1;
+      background: var(--bg-warm);
     }
 
-    .shortcut-item:hover {
-      background: #fff;
+    .pitch-card .icon {
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      margin-bottom: 8px;
+      color: var(--accent);
+      display: block;
+      line-height: 1;
     }
 
-    .shortcut-item kbd {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 500;
+    .pitch-card h3 {
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.8rem;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .pitch-card p {
+      font-family: 'VT323', monospace;
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      line-height: 1.45;
+    }
+
+    /* ============================================
+       KEYBOARD SHORTCUTS
+       ============================================ */
+    .shortcuts { background: var(--bg); }
+
+    .shortcut-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 620px;
+    }
+
+    .keycap {
+      background: var(--bg);
+      border: 3px solid var(--ink);
+      border-bottom-width: 6px;
+      padding: 14px 8px;
+      text-align: center;
+      transition: all 0.05s steps(1);
+      cursor: default;
+    }
+
+    .keycap:hover {
+      border-bottom-width: 3px;
+      transform: translateY(3px);
+      background: var(--bg-warm);
+    }
+
+    .keycap kbd {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.4rem;
+      display: block;
+      margin-bottom: 8px;
       color: var(--ink);
+      line-height: 1.4;
     }
 
-    .shortcut-item span {
-      font-size: 0.75rem;
+    .keycap span {
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
       color: var(--ink-faint);
     }
 
-    /* === UNDER THE HOOD === */
+    /* ============================================
+       TECH / UNDER THE HOOD
+       ============================================ */
     .tech-pills {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
+      gap: 8px;
       margin-top: 1.5rem;
     }
 
     .pill {
-      padding: 0.5rem 1rem;
-      border-radius: 100px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      border: 1px solid var(--border);
-      background: var(--warm-white);
+      padding: 8px 16px;
+      font-family: 'VT323', monospace;
+      font-size: 1.1rem;
+      border: 3px solid var(--ink);
+      background: var(--bg);
       color: var(--ink-soft);
+      box-shadow: 3px 3px 0 var(--border);
+      transition: all 0.05s steps(1);
     }
 
-    /* === FINAL CTA === */
+    .pill:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 5px 5px 0 var(--border);
+      background: var(--bg-warm);
+    }
+
+    /* ============================================
+       CTA
+       ============================================ */
     .cta {
       text-align: center;
-      padding: 8rem 2rem;
+      padding: 6rem 2rem;
+      background: var(--bg-alt);
       position: relative;
+      overflow: hidden;
     }
 
     .cta .section-title {
-      max-width: 480px;
+      max-width: 520px;
       margin: 0 auto 1rem;
     }
 
     .cta .tagline {
+      font-family: 'VT323', monospace;
       color: var(--ink-soft);
-      font-size: 1.05rem;
-      margin-bottom: 2.5rem;
+      font-size: 1.2rem;
+      line-height: 1.5;
+      margin-bottom: 2rem;
     }
 
-    /* === FOOTER === */
+    /* ============================================
+       FOOTER
+       ============================================ */
     footer {
+      background: var(--ink);
       text-align: center;
       padding: 2rem;
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.7rem;
       color: var(--ink-faint);
-      font-size: 0.8rem;
-      border-top: 1px solid var(--border);
+      border-top: 3px solid var(--accent);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .footer-landscape {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      opacity: 0.06;
+      background:
+        linear-gradient(135deg, var(--bg) 33.33%, transparent 33.33%) 0 0 / 40px 20px repeat-x,
+        linear-gradient(225deg, var(--bg) 33.33%, transparent 33.33%) 0 0 / 40px 20px repeat-x;
     }
 
     footer a {
-      color: var(--ink-soft);
+      color: var(--bg);
       text-decoration: none;
     }
+    footer a:hover { color: var(--accent); }
 
-    footer a:hover {
-      color: var(--ink);
-    }
-
-    /* === RESPONSIVE === */
-    @media (max-width: 640px) {
-      section { padding: 4rem 1.5rem; }
-      .demo-body { grid-template-columns: 1fr; min-height: auto; }
-      .hero h1 { margin-bottom: 1rem; }
-    }
-
-    /* === SCROLL ANIMATIONS === */
+    /* ============================================
+       SCROLL REVEAL
+       ============================================ */
     .reveal {
       opacity: 0;
-      transform: translateY(32px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
+      transform: translateY(20px);
+      transition: opacity 0.35s steps(5), transform 0.35s steps(5);
     }
-
     .reveal.visible {
       opacity: 1;
       transform: translateY(0);
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+      section { padding: 3.5rem 1.25rem; }
+      .demo-body { grid-template-columns: 1fr; min-height: auto; }
+      .pitch-grid { grid-template-columns: 1fr; }
+      .shortcut-grid { grid-template-columns: repeat(2, 1fr); }
+      .hero h1 { margin-bottom: 1rem; }
+      .ticker-track span { font-size: 0.45rem; }
+      .pixel-star { display: none; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-actions { flex-direction: column; align-items: center; }
+      .install-cmd { font-size: 0.95rem; }
+      .section-title { font-size: 0.8rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- HERO -->
+  <!-- ==================== HERO ==================== -->
   <section class="hero">
-    <div class="hero-bg">
-      <div class="circle"></div>
-      <div class="circle"></div>
-      <div class="circle"></div>
+    <div class="birds">
+      <div class="bird-path b1"><div class="pixel-bird"></div></div>
+      <div class="bird-path b2"><div class="pixel-bird"></div></div>
+      <div class="bird-path b3"><div class="pixel-bird"></div></div>
+      <div class="bird-path b4"><div class="pixel-bird"></div></div>
+      <div class="bird-path b5"><div class="pixel-bird"></div></div>
+      <div class="bird-path b6"><div class="pixel-bird"></div></div>
+      <div class="bird-path b7"><div class="pixel-bird"></div></div>
     </div>
+    <div class="pixel-star star-1"></div>
+    <div class="pixel-star star-2"></div>
+    <div class="pixel-star star-3"></div>
+    <div class="pixel-star star-4"></div>
+    <div class="pixel-star star-5"></div>
+    <div class="pixel-star star-6"></div>
+
     <div class="hero-content">
       <img src="icon.png" class="hero-icon" alt="flock icon">
-      <h1>flock<span class="dot">.</span></h1>
+      <h1>flock</h1>
       <p class="tagline">
         run as many claude code sessions as you want, all at once, in one tiny beautiful window. it's kind of mesmerizing honestly.
       </p>
@@ -609,22 +766,23 @@
         <a href="#features" class="btn btn-ghost">see what it does ↓</a>
       </div>
       <div class="install-hint">
-        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew tap divagation/flock && brew install --cask flockapp'); this.querySelector('.copy-icon').textContent = '✓'; setTimeout(() => this.querySelector('.copy-icon').textContent = '⎘', 1500)">
+        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew install --cask divagation/flock/flockapp'); this.querySelector('.copy-icon').textContent = 'copied!'; setTimeout(() => this.querySelector('.copy-icon').textContent = '[copy]', 1500)">
+          <span class="prompt-char">&gt;</span>
           <code>brew install --cask divagation/flock/flockapp</code>
-          <span class="copy-icon">⎘</span>
+          <span class="copy-icon">[copy]</span>
         </button>
       </div>
     </div>
-    <div class="scroll-hint">scroll</div>
+    <div class="scroll-hint">↓ scroll ↓</div>
   </section>
 
-  <!-- DEMO -->
+  <!-- ==================== DEMO ==================== -->
   <section class="demo" id="demo">
     <div class="section-inner reveal">
-      <div class="section-label">what it looks like</div>
-      <div class="section-title" style="text-align:center; margin-left:auto; margin-right:auto;">four claudes, one window</div>
-      <p class="section-subtitle" style="text-align:center; margin-left:auto; margin-right:auto;">
-        you press ⌘T a few times. suddenly they're all working on different things and you're just... watching.
+      <div class="section-label">// what it looks like</div>
+      <div class="section-title">four claudes,<br>one window</div>
+      <p class="section-subtitle" style="text-align:center;margin-left:auto;margin-right:auto;">
+        you press &#8984;T a few times. suddenly they're all working on different things and you're just... watching.
       </p>
       <div class="demo-window">
         <div class="demo-titlebar">
@@ -638,10 +796,10 @@
               <div class="demo-pane-num">1</div>
               <div class="demo-pane-label">claude</div>
             </div>
-            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">refactor auth module</span></div>
+            <div class="demo-line"><span class="prompt">&#10095;</span> <span class="cmd">refactor auth module</span></div>
             <div class="demo-line"><span class="file">  reading src/auth/index.ts</span></div>
             <div class="demo-line"><span class="file">  editing src/auth/jwt.ts</span></div>
-            <div class="demo-line"><span class="success">  ✓ 4 files updated</span></div>
+            <div class="demo-line"><span class="success">  &#10003; 4 files updated</span></div>
             <div class="demo-line"><span class="cursor"></span></div>
           </div>
           <div class="demo-pane">
@@ -649,19 +807,19 @@
               <div class="demo-pane-num">2</div>
               <div class="demo-pane-label">claude</div>
             </div>
-            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">write tests for api</span></div>
+            <div class="demo-line"><span class="prompt">&#10095;</span> <span class="cmd">write tests for api</span></div>
             <div class="demo-line"><span class="file">  reading src/api/routes.ts</span></div>
             <div class="demo-line"><span class="file">  creating tests/api.test.ts</span></div>
-            <div class="demo-line"><span class="success">  ✓ 12 tests passing</span></div>
+            <div class="demo-line"><span class="success">  &#10003; 12 tests passing</span></div>
           </div>
           <div class="demo-pane">
             <div class="demo-pane-header">
               <div class="demo-pane-num">3</div>
               <div class="demo-pane-label">claude</div>
             </div>
-            <div class="demo-line"><span class="prompt">❯</span> <span class="cmd">fix the navbar bug</span></div>
+            <div class="demo-line"><span class="prompt">&#10095;</span> <span class="cmd">fix the navbar bug</span></div>
             <div class="demo-line"><span class="file">  reading components/Nav.tsx</span></div>
-            <div class="demo-line"><span class="success">  ✓ fixed z-index issue</span></div>
+            <div class="demo-line"><span class="success">  &#10003; fixed z-index issue</span></div>
           </div>
           <div class="demo-pane">
             <div class="demo-pane-header">
@@ -677,52 +835,64 @@
     </div>
   </section>
 
-  <!-- FEATURES -->
+  <div class="dither"></div>
+
+  <!-- ==================== TICKER ==================== -->
+  <div class="ticker">
+    <div class="ticker-track">
+      <span>PARALLEL AGENTS &#9733; NATIVE SWIFT &#9733; ZERO ELECTRON &#9733; TERMINAL MULTIPLEXER &#9733; KEYBOARD FIRST &#9733; SESSION RESTORE &#9733; BROADCAST MODE &#9733; COMMAND PALETTE &#9733;&nbsp;</span>
+      <span>PARALLEL AGENTS &#9733; NATIVE SWIFT &#9733; ZERO ELECTRON &#9733; TERMINAL MULTIPLEXER &#9733; KEYBOARD FIRST &#9733; SESSION RESTORE &#9733; BROADCAST MODE &#9733; COMMAND PALETTE &#9733;&nbsp;</span>
+    </div>
+  </div>
+
+  <div class="dither"></div>
+
+  <!-- ==================== FEATURES ==================== -->
   <section class="pitch" id="features">
     <div class="section-inner reveal">
-      <div class="section-label">what you get</div>
+      <div class="section-label">// what you get</div>
       <div class="section-title">everything you need,<br>nothing you don't</div>
       <p class="section-subtitle">
         flock does a few things and does them really well. no bloat, no settings rabbit holes, no "coming soon" features.
       </p>
       <div class="pitch-grid">
         <div class="pitch-card">
-          <span class="emoji">🪟</span>
+          <span class="icon">[##]</span>
           <h3>panes that just work</h3>
           <p>they tile themselves. 1 pane fills the screen, 4 make a grid. split, maximize, navigate. it figures it out.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">🤖</span>
+          <span class="icon">{AI}</span>
           <h3>agent mode</h3>
           <p>throw tasks at a kanban board. watch agents pick them up and work through them in real time, with a live action timeline.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">⌨️</span>
+          <span class="icon">&gt;_</span>
           <h3>command palette</h3>
-          <p>⌘K opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast you know the vibe.</p>
+          <p>&#8984;K opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast you know the vibe.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">📡</span>
+          <span class="icon">)))</span>
           <h3>broadcast mode</h3>
           <p>type once, every pane hears it. useful when you want all your claudes to know something at the same time.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">🔍</span>
+          <span class="icon">[?]</span>
           <h3>find everywhere</h3>
-          <p>search inside one pane or across all of them. ⌘F for one, ⌘⇧F for all. simple.</p>
+          <p>search inside one pane or across all of them. &#8984;F for one, &#8984;&#8679;F for all. simple.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">💾</span>
+          <span class="icon">&lt;/&gt;</span>
           <h3>session restore</h3>
           <p>close the app, open it later, everything's still there. your layout, your panes, right where you left them.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">🎨</span>
+          <span class="icon">{~}</span>
           <h3>themes</h3>
           <p>because life's too short for one color scheme. switch from the command palette whenever the mood strikes.</p>
         </div>
         <div class="pitch-card">
-          <span class="emoji">🔔</span>
+          <span class="icon">[!]</span>
           <h3>notifications</h3>
           <p>flock taps you on the shoulder when an agent finishes something. go get coffee, it'll let you know.</p>
         </div>
@@ -730,31 +900,35 @@
     </div>
   </section>
 
-  <!-- SHORTCUTS -->
+  <div class="dither-accent"></div>
+
+  <!-- ==================== SHORTCUTS ==================== -->
   <section class="shortcuts">
     <div class="section-inner reveal">
-      <div class="section-label">keyboard-first</div>
+      <div class="section-label">// keyboard-first</div>
       <div class="section-title">your hands never<br>leave the keys</div>
       <p class="section-subtitle">
         every action has a shortcut. here are the ones you'll use most.
       </p>
-      <div class="shortcut-table">
-        <div class="shortcut-item"><kbd>⌘T</kbd><span>new claude</span></div>
-        <div class="shortcut-item"><kbd>⌘⇧T</kbd><span>new shell</span></div>
-        <div class="shortcut-item"><kbd>⌘W</kbd><span>close pane</span></div>
-        <div class="shortcut-item"><kbd>⌘↩</kbd><span>maximize</span></div>
-        <div class="shortcut-item"><kbd>⌘K</kbd><span>palette</span></div>
-        <div class="shortcut-item"><kbd>⌘D</kbd><span>split</span></div>
-        <div class="shortcut-item"><kbd>⌘⇧A</kbd><span>agent mode</span></div>
-        <div class="shortcut-item"><kbd>⌘⇧B</kbd><span>broadcast</span></div>
+      <div class="shortcut-grid">
+        <div class="keycap"><kbd>&#8984;T</kbd><span>new claude</span></div>
+        <div class="keycap"><kbd>&#8984;&#8679;T</kbd><span>new shell</span></div>
+        <div class="keycap"><kbd>&#8984;W</kbd><span>close pane</span></div>
+        <div class="keycap"><kbd>&#8984;&#8629;</kbd><span>maximize</span></div>
+        <div class="keycap"><kbd>&#8984;K</kbd><span>palette</span></div>
+        <div class="keycap"><kbd>&#8984;D</kbd><span>split</span></div>
+        <div class="keycap"><kbd>&#8984;&#8679;A</kbd><span>agent mode</span></div>
+        <div class="keycap"><kbd>&#8984;&#8679;B</kbd><span>broadcast</span></div>
       </div>
     </div>
   </section>
 
-  <!-- TECH -->
+  <div class="dither"></div>
+
+  <!-- ==================== TECH ==================== -->
   <section class="tech">
     <div class="section-inner reveal">
-      <div class="section-label">under the hood</div>
+      <div class="section-label">// under the hood</div>
       <div class="section-title">native swift.<br>no electron. ever.</div>
       <p class="section-subtitle">
         each pane is a real terminal powered by SwiftTerm. agent mode talks to claude code over stream-json and parses every event in real time. it's fast because it's not pretending to be a website.
@@ -770,41 +944,42 @@
     </div>
   </section>
 
-  <!-- CTA -->
+  <div class="dither-accent"></div>
+
+  <!-- ==================== CTA ==================== -->
   <section class="cta">
     <div class="section-inner reveal">
-      <img src="icon.png" style="width:64px;height:64px;image-rendering:pixelated;margin-bottom:1.5rem;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.08));" alt="">
+      <img src="icon.png" style="width:64px;height:64px;image-rendering:pixelated;margin-bottom:1.5rem;filter:drop-shadow(4px 4px 0 rgba(0,0,0,0.1));" alt="">
       <div class="section-title">let your agents loose</div>
       <p class="tagline">install flock in 10 seconds and see what happens when your claudes work together.</p>
-      <div class="hero-actions">
+      <div class="hero-actions" style="justify-content:center;">
         <a href="https://github.com/Divagation/flock" class="btn btn-primary">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           get flock
         </a>
       </div>
       <div class="install-hint" style="margin-top:1.5rem;">
-        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew tap divagation/flock && brew install --cask flockapp'); this.querySelector('.copy-icon').textContent = '✓'; setTimeout(() => this.querySelector('.copy-icon').textContent = '⎘', 1500)">
+        <button class="install-cmd" onclick="navigator.clipboard.writeText('brew install --cask divagation/flock/flockapp'); this.querySelector('.copy-icon').textContent = 'copied!'; setTimeout(() => this.querySelector('.copy-icon').textContent = '[copy]', 1500)">
+          <span class="prompt-char">&gt;</span>
           <code>brew install --cask divagation/flock/flockapp</code>
-          <span class="copy-icon">⎘</span>
+          <span class="copy-icon">[copy]</span>
         </button>
       </div>
     </div>
   </section>
 
+  <!-- ==================== FOOTER ==================== -->
   <footer>
-    <p>made by <a href="https://github.com/Divagation">divagation</a></p>
+    <div class="footer-landscape"></div>
+    <p style="position:relative;z-index:1;">made by <a href="https://github.com/Divagation">divagation</a></p>
   </footer>
 
   <script>
-    // Scroll reveal
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
+        if (entry.isIntersecting) entry.target.classList.add('visible');
       });
-    }, { threshold: 0.15 });
-
+    }, { threshold: 0.12 });
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
   </script>
 
