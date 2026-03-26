@@ -24,6 +24,7 @@ class Settings {
         case maxParallelAgents
         case memoryEnabled
         case showUsageTracker
+        case autoCheckUpdates
     }
 
     var themeId: String {
@@ -108,6 +109,14 @@ class Settings {
             return defaults.bool(forKey: Key.showUsageTracker.rawValue)
         }
         set { defaults.set(newValue, forKey: Key.showUsageTracker.rawValue); post(.showUsageTracker) }
+    }
+
+    var autoCheckUpdates: Bool {
+        get {
+            if defaults.object(forKey: Key.autoCheckUpdates.rawValue) == nil { return true }
+            return defaults.bool(forKey: Key.autoCheckUpdates.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.autoCheckUpdates.rawValue); post(.autoCheckUpdates) }
     }
 
     // ANSI color overrides per theme

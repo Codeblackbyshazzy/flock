@@ -147,5 +147,22 @@ gh release create "v${VERSION}" "$ZIP_NAME" "$PKG_NAME" \
 echo ""
 echo "Release created: https://github.com/${REPO}/releases/tag/v${VERSION}"
 
+# ─── Update version.json for auto-updater ───
+echo "Updating version.json..."
+
+cat > docs/version.json <<VJEOF
+{
+  "version": "${VERSION}",
+  "url": "https://divagation.github.io/flock/thanks.html",
+  "notes": "Flock v${VERSION} is available. Visit the download page to get the latest .pkg installer."
+}
+VJEOF
+
+# Also update the fallback version constant in source
+sed -i '' "s/static let current = \"[^\"]*\"/static let current = \"${VERSION}\"/" \
+  Sources/Flock/UpdateChecker.swift
+
+echo "version.json updated. Remember to push docs/ to deploy."
+
 echo ""
 echo "Done. Release live at: https://github.com/${REPO}/releases/tag/v${VERSION}"

@@ -51,6 +51,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hotkeyManager = GlobalHotkeyManager(window: mainWindow)
         }
 
+        // Auto-update check
+        UpdateChecker.shared.checkOnLaunchIfNeeded()
+
         // Click-to-focus
         NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             self?.paneManager.handleClick(event: event)
@@ -137,6 +140,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func toggleMemory(_ sender: Any?) {
         memorySidebar.toggle(in: mainWindow)
     }
+
+    @objc func checkForUpdates(_ sender: Any?) {
+        UpdateChecker.shared.checkNow()
+    }
 }
 
 // MARK: - Menu construction
@@ -149,6 +156,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
     let appMenu = NSMenu(); appItem.submenu = appMenu
     appMenu.addItem(NSMenuItem(title: "About Flock",
         action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+    addItem(appMenu, "Check for Updates\u{2026}", #selector(AppDelegate.checkForUpdates(_:)),
+            key: "", target: target)
     appMenu.addItem(.separator())
     addItem(appMenu, "Preferences\u{2026}", #selector(AppDelegate.showPreferences(_:)),
             key: ",", target: target)

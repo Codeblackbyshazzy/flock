@@ -15,12 +15,13 @@ class PreferencesView: NSView {
     private let soundSwitch = NSSwitch()
     private let memorySwitch = NSSwitch()
     private let usageSwitch = NSSwitch()
+    private let updateSwitch = NSSwitch()
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
 
     // MARK: - Layout Constants
 
     private let panelWidth: CGFloat = 480
-    private let panelHeight: CGFloat = 512
+    private let panelHeight: CGFloat = 544
     private let labelX: CGFloat = 24
     private let controlX: CGFloat = 160
     private let controlWidth: CGFloat = 200
@@ -32,7 +33,7 @@ class PreferencesView: NSView {
 
     static func show(on window: NSWindow) {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 512),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 544),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: true
@@ -41,7 +42,7 @@ class PreferencesView: NSView {
         panel.isFloatingPanel = false
         panel.becomesKeyOnlyIfNeeded = false
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 512))
+        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 544))
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
@@ -202,6 +203,24 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // Auto Updates
+
+        addLabel("Auto Updates", y: y)
+
+        updateSwitch.state = settings.autoCheckUpdates ? .on : .off
+        updateSwitch.target = self
+        updateSwitch.action = #selector(updateChanged(_:))
+        updateSwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(updateSwitch)
+
+        let updateHint = NSTextField(labelWithString: "Check for new versions on launch")
+        updateHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        updateHint.textColor = Theme.textTertiary
+        updateHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 240, height: 14)
+        addSubview(updateHint)
+
+        y += rowHeight
+
         // ── Memory ──
         y += sectionGap - rowHeight
         y = addSectionHeader("Memory", y: y)
@@ -304,6 +323,10 @@ class PreferencesView: NSView {
 
     @objc private func usageChanged(_ sender: NSSwitch) {
         Settings.shared.showUsageTracker = (sender.state == .on)
+    }
+
+    @objc private func updateChanged(_ sender: NSSwitch) {
+        Settings.shared.autoCheckUpdates = (sender.state == .on)
     }
 
     @objc private func memoryChanged(_ sender: NSSwitch) {
