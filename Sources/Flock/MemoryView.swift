@@ -295,9 +295,8 @@ private class MemorySidebarView: NSView {
     @objc private func clearMemories(_ sender: Any) {
         let alert = NSAlert()
         alert.messageText = "Clear Memories"
-        alert.informativeText = activeFilter != nil
-            ? "Remove all \(activeFilter!.label) memories?"
-            : "Remove all memories? This cannot be undone."
+        alert.informativeText = activeFilter.map { "Remove all \($0.label) memories?" }
+            ?? "Remove all memories? This cannot be undone."
         alert.alertStyle = .warning
         alert.addButton(withTitle: "Clear")
         alert.addButton(withTitle: "Cancel")

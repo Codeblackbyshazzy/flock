@@ -355,7 +355,7 @@ private class GlobalFindResultsView: NSView {
 
 private extension NSImage {
     func tinted(with color: NSColor) -> NSImage {
-        let img = self.copy() as! NSImage
+        guard let img = self.copy() as? NSImage else { return self }
         img.lockFocus()
         color.set()
         NSRect(origin: .zero, size: img.size).fill(using: .sourceAtop)

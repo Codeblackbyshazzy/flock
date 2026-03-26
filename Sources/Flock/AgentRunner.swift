@@ -11,12 +11,16 @@ final class AgentProcess {
     private let outputPipe = Pipe()
     private let inputPipe = Pipe()
     private let parserQueue = DispatchQueue(label: "com.baa.flock.parser")
+    private let resumeSessionId: String?
+    private let resumeMessage: String?
 
     var onEvent: ((StreamJsonEvent) -> Void)?
     var onComplete: (((isError: Bool, text: String?, costUsd: Double?)) -> Void)?
 
-    init(task: AgentTask) {
+    init(task: AgentTask, resumeSessionId: String? = nil, message: String? = nil) {
         self.task = task
+        self.resumeSessionId = resumeSessionId
+        self.resumeMessage = message
     }
 
     // MARK: - Launch
@@ -30,7 +34,14 @@ final class AgentProcess {
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: claudePath)
-        proc.arguments = ["-p", task.title, "--output-format", "stream-json", "--verbose"]
+
+        if let sessionId = resumeSessionId, let message = resumeMessage {
+            // Resume an existing conversation
+            proc.arguments = ["-p", message, "--resume", sessionId, "--output-format", "stream-json", "--verbose"]
+        } else {
+            // New conversation
+            proc.arguments = ["-p", task.title, "--output-format", "stream-json", "--verbose"]
+        }
         proc.standardOutput = outputPipe
         proc.standardInput = inputPipe
         proc.standardError = FileHandle.nullDevice
@@ -151,39 +162,71 @@ final class AgentRunner {
     /// Creates an AgentProcess for the task, moves it to inProgress, and launches.
     func start(_ task: AgentTask) {
         guard runningProcesses[task.id] == nil else { return }
-
-        let agentProcess = AgentProcess(task: task)
-        runningProcesses[task.id] = agentProcess
-
         TaskStore.shared.moveToInProgress(task)
+        wireAndLaunch(AgentProcess(task: task), for: task)
+    }
 
-        // Wire event callback
+    /// Resumes a conversation by spawning a new process with --resume.
+    func resume(_ task: AgentTask, message: String) {
+        guard runningProcesses[task.id] == nil,
+              let sessionId = task.sessionId else { return }
+        wireAndLaunch(AgentProcess(task: task, resumeSessionId: sessionId, message: message), for: task)
+        NotificationCenter.default.post(name: TaskStore.didChange, object: nil)
+    }
+
+    private func wireAndLaunch(_ agentProcess: AgentProcess, for task: AgentTask) {
+        runningProcesses[task.id] = agentProcess
+        task.isWaitingForInput = false
         agentProcess.onEvent = { [weak self] event in
             self?.handleEvent(event, for: task)
         }
-
-        // Wire completion callback
         agentProcess.onComplete = { [weak self] result in
             self?.handleCompletion(result, for: task)
         }
-
         agentProcess.launch()
+    }
+
+    /// Marks a waiting task as done (user explicitly finishing the conversation).
+    func finish(_ task: AgentTask) {
+        if let agentProcess = runningProcesses[task.id] {
+            agentProcess.terminate()
+            runningProcesses.removeValue(forKey: task.id)
+        }
+        TaskStore.shared.markDone(task, summary: task.resultSummary, cost: task.costUsd)
     }
 
     // MARK: - Send Message
 
-    /// Sends a follow-up message to a running agent's stdin.
+    /// Sends a follow-up message to the agent. If the process is still running,
+    /// writes to stdin. If it has completed (waiting for input), spawns a new
+    /// process with --resume to continue the conversation.
     func sendMessage(to task: AgentTask, text: String) {
-        runningProcesses[task.id]?.sendMessage(text)
+        // Add user message to the action timeline
+        for i in task.actions.indices where task.actions[i].isActive {
+            task.actions[i].isActive = false
+        }
+        let action = AgentTaskAction(type: .message, title: text, isActive: false)
+        task.actions.append(action)
+        NotificationCenter.default.post(name: TaskStore.didChange, object: nil)
+
+        if let proc = runningProcesses[task.id] {
+            // Process still running -- write to stdin
+            proc.sendMessage(text)
+        } else if task.sessionId != nil && task.status == .inProgress {
+            // Process exited but session alive -- resume conversation
+            resume(task, message: text)
+        }
     }
 
     // MARK: - Cancel
 
     /// Terminates and marks a single task as failed.
     func cancel(_ task: AgentTask) {
-        guard let agentProcess = runningProcesses[task.id] else { return }
-        agentProcess.terminate()
-        runningProcesses.removeValue(forKey: task.id)
+        if let agentProcess = runningProcesses[task.id] {
+            agentProcess.terminate()
+            runningProcesses.removeValue(forKey: task.id)
+        }
+        task.isWaitingForInput = false
         TaskStore.shared.markFailed(task, error: "Cancelled by user")
     }
 
@@ -250,9 +293,11 @@ final class AgentRunner {
             // Handled by onComplete
             break
 
-        case .init_:
-            // Session init -- no action needed
-            break
+        case .init_(let sessionId, _):
+            // Capture session ID for conversation resumption
+            if !sessionId.isEmpty {
+                task.sessionId = sessionId
+            }
 
         case .toolResult:
             // Tool results are internal to the stream -- no action needed
@@ -268,17 +313,28 @@ final class AgentRunner {
 
         deactivatePreviousAction(for: task)
 
-        if result.isError {
-            TaskStore.shared.markFailed(task, error: result.text ?? "Unknown error")
-        } else {
-            TaskStore.shared.markDone(task, summary: result.text, cost: result.costUsd)
+        // Accumulate cost across conversation rounds
+        if let newCost = result.costUsd {
+            task.costUsd = (task.costUsd ?? 0) + newCost
+        }
 
-            // Auto-capture task summary to memory
+        if result.isError {
+            task.isWaitingForInput = false
+            TaskStore.shared.markFailed(task, error: result.text ?? "Unknown error")
+        } else if task.sessionId != nil {
+            // Session exists -- keep task alive for follow-up messages
+            task.resultSummary = result.text
+            task.isWaitingForInput = true
+            NotificationCenter.default.post(name: TaskStore.didChange, object: nil)
+        } else {
+            // No session -- one-shot completion
+            TaskStore.shared.markDone(task, summary: result.text, cost: task.costUsd)
+
             if Settings.shared.memoryEnabled, let summary = result.text, !summary.isEmpty {
                 MemoryStore.shared.addTaskSummary(
                     taskTitle: task.title,
                     summary: summary,
-                    cost: result.costUsd
+                    cost: task.costUsd
                 )
             }
         }

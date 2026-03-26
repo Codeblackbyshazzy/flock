@@ -36,6 +36,7 @@ class FlockWindow: NSWindow {
         titlebarAppearsTransparent = true
         titleVisibility = .hidden
         titlebarSeparatorStyle = .none
+        isMovableByWindowBackground = false
         backgroundColor = Theme.chrome
         minSize = NSSize(width: 600, height: 400)
         title = "Flock"
@@ -92,7 +93,7 @@ class FlockRootView: NSView {
     weak var statusBar: NSView?
     weak var agentModeView: NSView?
     let tabBarEffectView: NSVisualEffectView = {
-        let v = NSVisualEffectView(frame: .zero)
+        let v = TitlebarEffectView(frame: .zero)
         v.material = .titlebar
         v.blendingMode = .behindWindow
         v.state = .followsWindowActiveState
@@ -143,4 +144,13 @@ class FlockRootView: NSView {
         }
         statusBar?.frame    = NSRect(x: 0, y: h - statusH, width: w, height: statusH)
     }
+}
+
+// MARK: - TitlebarEffectView
+
+/// NSVisualEffectView subclass that prevents the titlebar from claiming its area
+/// for window dragging when used with fullSizeContentView.
+private class TitlebarEffectView: NSVisualEffectView {
+    override var mouseDownCanMoveWindow: Bool { false }
+    @objc func _opaqueRectForWindowMoveWhenInTitlebar() -> NSRect { bounds }
 }

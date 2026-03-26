@@ -76,7 +76,7 @@ class PreferencesView: NSView {
         y = addSectionHeader("Appearance", y: y)
 
         // Theme
-        y = addRow(y: y)
+
         addLabel("Theme", y: y)
 
         let themes = Themes.all
@@ -98,7 +98,7 @@ class PreferencesView: NSView {
         y = addSectionHeader("Terminal", y: y)
 
         // Font Size
-        y = addRow(y: y)
+
         addLabel("Font Size", y: y)
 
         fontSizeSlider.minValue = 11
@@ -124,7 +124,7 @@ class PreferencesView: NSView {
         y = addSectionHeader("Behavior", y: y)
 
         // Default Pane
-        y = addRow(y: y)
+
         addLabel("Default Pane", y: y)
 
         paneTypeControl.segmentCount = 2
@@ -140,7 +140,7 @@ class PreferencesView: NSView {
         y += rowHeight
 
         // On Launch
-        y = addRow(y: y)
+
         addLabel("On Launch", y: y)
 
         launchControl.segmentCount = 2
@@ -161,7 +161,7 @@ class PreferencesView: NSView {
         y = addSectionHeader("Indicators", y: y)
 
         // Activity Dots
-        y = addRow(y: y)
+
         addLabel("Activity Dots", y: y)
 
         activitySwitch.state = settings.showActivityIndicators ? .on : .off
@@ -173,7 +173,7 @@ class PreferencesView: NSView {
         y += rowHeight
 
         // Sound Effects
-        y = addRow(y: y)
+
         addLabel("Sound Effects", y: y)
 
         soundSwitch.state = settings.soundEffectsEnabled ? .on : .off
@@ -185,7 +185,7 @@ class PreferencesView: NSView {
         y += rowHeight
 
         // Usage Tracker
-        y = addRow(y: y)
+
         addLabel("Usage Tracker", y: y)
 
         usageSwitch.state = settings.showUsageTracker ? .on : .off
@@ -206,7 +206,7 @@ class PreferencesView: NSView {
         y += sectionGap - rowHeight
         y = addSectionHeader("Memory", y: y)
 
-        y = addRow(y: y)
+
         addLabel("AI Memory", y: y)
 
         memorySwitch.state = settings.memoryEnabled ? .on : .off
@@ -257,9 +257,6 @@ class PreferencesView: NSView {
         return y + sectionHeaderHeight + 8
     }
 
-    private func addRow(y: CGFloat) -> CGFloat {
-        return y
-    }
 
     private func addLabel(_ text: String, y: CGFloat) {
         let label = NSTextField(labelWithString: text)

@@ -20,19 +20,22 @@ enum AgentActionType: String, Codable {
     case search
     case agent
     case web
+    case message
 
     var badge: String {
         switch self {
-        case .think:  return "..."
-        case .read:   return "R"
-        case .edit:   return "E"
-        case .write:  return "W"
-        case .bash:   return "$"
-        case .search: return "?"
-        case .agent:  return "A"
-        case .web:    return "W"
+        case .think:   return "..."
+        case .read:    return "R"
+        case .edit:    return "E"
+        case .write:   return "W"
+        case .bash:    return "$"
+        case .search:  return "?"
+        case .agent:   return "A"
+        case .web:     return "W"
+        case .message: return ">"
         }
     }
+
 }
 
 // MARK: - AgentTaskAction
@@ -75,6 +78,14 @@ final class AgentTask: Codable, Identifiable {
     var errorMessage: String?
     var resultSummary: String?
     var costUsd: Double?
+    var sessionId: String?
+    /// Transient -- not persisted. True when the process has exited but the session is alive.
+    var isWaitingForInput: Bool = false
+
+    private enum CodingKeys: String, CodingKey {
+        case id, title, status, actions, createdAt, startedAt, completedAt
+        case errorMessage, resultSummary, costUsd, sessionId
+    }
 
     var elapsedTime: TimeInterval {
         guard let start = startedAt else { return 0 }
@@ -219,5 +230,13 @@ final class TaskStore {
         decoder.dateDecodingStrategy = .iso8601
         guard let loaded = try? decoder.decode([AgentTask].self, from: data) else { return }
         tasks = loaded
+
+        // Tasks that were in-progress when the app quit have no running process.
+        // Mark them as failed so they don't sit in a stale state.
+        for task in tasks where task.status == .inProgress {
+            task.status = .failed
+            task.completedAt = Date()
+            task.errorMessage = "Interrupted (app quit)"
+        }
     }
 }

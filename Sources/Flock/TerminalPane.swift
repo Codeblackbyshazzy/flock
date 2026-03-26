@@ -188,7 +188,11 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
-    deinit { NotificationCenter.default.removeObserver(self) }
+    deinit {
+        byteWindowTimer?.invalidate()
+        agentActivityTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
 
     @objc private func settingsChanged(_ note: Notification) {
         guard let key = note.userInfo?["key"] as? String else { return }

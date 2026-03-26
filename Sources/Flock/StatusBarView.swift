@@ -56,6 +56,11 @@ class StatusBarView: NSView {
                                                name: Settings.didChange, object: nil)
     }
 
+    deinit {
+        durationTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
+
     @objc private func taskStoreChanged() { update() }
     @objc private func usageUpdated() { updateUsage() }
     @objc private func settingsChanged() {

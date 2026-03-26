@@ -7,6 +7,12 @@ class UsageTracker {
     static let shared = UsageTracker()
     static let didUpdate = Notification.Name("UsageTrackerDidUpdate")
 
+    private static let sessionDateFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+
     struct Usage: Equatable {
         var totalTokens: Int = 0
         var inputTokens: Int = 0
@@ -151,12 +157,10 @@ class UsageTracker {
                   let usageDict = message["usage"] as? [String: Any] else { continue }
 
             // Check timestamp is today
-            if let timestamp = json["timestamp"] as? String {
-                let formatter = ISO8601DateFormatter()
-                formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-                if let date = formatter.date(from: timestamp), date < startOfDay {
-                    continue
-                }
+            if let timestamp = json["timestamp"] as? String,
+               let date = Self.sessionDateFormatter.date(from: timestamp),
+               date < startOfDay {
+                continue
             }
 
             let input = usageDict["input_tokens"] as? Int ?? 0

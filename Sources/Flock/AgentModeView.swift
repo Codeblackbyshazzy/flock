@@ -2,16 +2,21 @@ import AppKit
 
 // MARK: - AgentModeView
 
-/// Top-level split container: Kanban board on the left (35%),
-/// vertical divider, and AgentCardPanel on the right (65%).
+/// Sculptor-style three-panel layout: sidebar (agent list) + conversation stream + detail panel.
 final class AgentModeView: NSView {
 
     override var isFlipped: Bool { true }
 
-    let kanban = KanbanBoardView()
-    let agentPanel = AgentCardPanel()
-    private let divider = NSView()
-    private let splitRatio: CGFloat = 0.35
+    let sidebar = AgentSidebarView()
+    let conversation = AgentConversationView()
+    let detail = AgentDetailView()
+    private let divider1 = NSView()
+    private let divider2 = NSView()
+
+    private let sidebarWidth: CGFloat = 200
+    private let detailRatio: CGFloat = 0.35
+
+    private(set) var selectedTaskID: UUID?
 
     // MARK: - Init
 
@@ -35,25 +40,51 @@ final class AgentModeView: NSView {
         wantsLayer = true
         layer?.backgroundColor = Theme.chrome.cgColor
 
-        // Divider
-        divider.wantsLayer = true
-        divider.layer?.backgroundColor = Theme.divider.cgColor
+        divider1.wantsLayer = true
+        divider1.layer?.backgroundColor = Theme.divider.cgColor
+        divider2.wantsLayer = true
+        divider2.layer?.backgroundColor = Theme.divider.cgColor
 
-        addSubview(kanban)
-        addSubview(divider)
-        addSubview(agentPanel)
+        addSubview(sidebar)
+        addSubview(divider1)
+        addSubview(conversation)
+        addSubview(divider2)
+        addSubview(detail)
 
-        // Wire kanban task selection to the agent card panel
-        kanban.onSelectTask = { [weak self] task in
-            self?.agentPanel.selectedTask = task
+        sidebar.onSelectTask = { [weak self] task in
+            self?.selectTask(task)
         }
 
         NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(handleThemeChange),
-            name: Theme.themeDidChange,
-            object: nil
+            self, selector: #selector(handleThemeChange),
+            name: Theme.themeDidChange, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(handleTaskStoreChange),
+            name: TaskStore.didChange, object: nil
+        )
+    }
+
+    // MARK: - Selection
+
+    func selectTask(_ task: AgentTask?) {
+        selectedTaskID = task?.id
+        sidebar.selectedTaskID = task?.id
+        conversation.task = task
+        detail.task = task
+        sidebar.needsDisplay = true
+    }
+
+    private func autoSelectIfNeeded() {
+        // If selection is still valid, do nothing -- sub-views observe TaskStore.didChange themselves
+        if let id = selectedTaskID,
+           TaskStore.shared.tasks.contains(where: { $0.id == id }) {
+            return
+        }
+
+        // Selection gone -- pick next available
+        let next = TaskStore.shared.inProgress.first ?? TaskStore.shared.tasks.first
+        selectTask(next)
     }
 
     // MARK: - Layout
@@ -71,36 +102,56 @@ final class AgentModeView: NSView {
             height: bounds.height - padding * 2
         )
 
-        let kanbanWidth = floor(insetBounds.width * splitRatio)
         let dividerWidth: CGFloat = 1
-        let panelWidth = insetBounds.width - kanbanWidth - dividerWidth - gap * 2
+        let remaining = insetBounds.width - sidebarWidth - dividerWidth * 2 - gap * 4
+        let detailWidth = floor(remaining * detailRatio)
+        let conversationWidth = remaining - detailWidth
 
-        kanban.frame = NSRect(
+        sidebar.frame = NSRect(
             x: insetBounds.minX,
             y: insetBounds.minY,
-            width: kanbanWidth,
+            width: sidebarWidth,
             height: insetBounds.height
         )
 
-        divider.frame = NSRect(
-            x: insetBounds.minX + kanbanWidth + gap,
+        divider1.frame = NSRect(
+            x: insetBounds.minX + sidebarWidth + gap,
             y: insetBounds.minY,
             width: dividerWidth,
             height: insetBounds.height
         )
 
-        agentPanel.frame = NSRect(
-            x: insetBounds.minX + kanbanWidth + gap + dividerWidth + gap,
+        conversation.frame = NSRect(
+            x: divider1.frame.maxX + gap,
             y: insetBounds.minY,
-            width: panelWidth,
+            width: conversationWidth,
+            height: insetBounds.height
+        )
+
+        divider2.frame = NSRect(
+            x: conversation.frame.maxX + gap,
+            y: insetBounds.minY,
+            width: dividerWidth,
+            height: insetBounds.height
+        )
+
+        detail.frame = NSRect(
+            x: divider2.frame.maxX + gap,
+            y: insetBounds.minY,
+            width: detailWidth,
             height: insetBounds.height
         )
     }
 
-    // MARK: - Theme
+    // MARK: - Notifications
 
     @objc private func handleThemeChange() {
         layer?.backgroundColor = Theme.chrome.cgColor
-        divider.layer?.backgroundColor = Theme.divider.cgColor
+        divider1.layer?.backgroundColor = Theme.divider.cgColor
+        divider2.layer?.backgroundColor = Theme.divider.cgColor
+    }
+
+    @objc private func handleTaskStoreChange() {
+        autoSelectIfNeeded()
     }
 }

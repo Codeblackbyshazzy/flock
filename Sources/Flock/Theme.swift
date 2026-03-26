@@ -252,6 +252,10 @@ struct Theme {
     static var terminalBg: NSColor { active.terminalBg }
     static var terminalFg: NSColor { active.terminalFg }
 
+    // Status
+    static let statusGreen = NSColor(hex: 0x5B9A6B)
+    static let statusRed   = NSColor(hex: 0xC75450)
+
     // ANSI (with per-theme custom overrides)
     static var ansiHex: [Int] { Settings.shared.customAnsiColors(forTheme: active.id) ?? active.ansiHex }
 
@@ -310,6 +314,13 @@ struct Theme {
         static let brandKern: CGFloat = 1.2
     }
 
+    // MARK: - Formatters
+
+    static func formatElapsed(_ interval: TimeInterval) -> String {
+        let total = max(0, Int(interval))
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
     // MARK: - Shadows
 
     struct ShadowConfig {
@@ -347,5 +358,23 @@ extension NSColor {
             blue:    CGFloat(hex & 0xFF) / 255.0,
             alpha:   CGFloat(alpha) / 255.0
         )
+    }
+}
+
+// MARK: - AgentActionType badge colors (UI extension, kept out of model layer)
+
+extension AgentActionType {
+    var badgeColor: NSColor {
+        switch self {
+        case .think:   return Theme.textTertiary
+        case .read:    return Theme.accent.blended(withFraction: 0.4, of: Theme.textSecondary) ?? Theme.accent
+        case .edit:    return Theme.accent
+        case .write:   return Theme.accent
+        case .bash:    return Theme.textPrimary.withAlphaComponent(0.8)
+        case .search:  return Theme.textSecondary
+        case .agent:   return Theme.accent.withAlphaComponent(0.7)
+        case .web:     return Theme.textSecondary
+        case .message: return Theme.accent
+        }
     }
 }

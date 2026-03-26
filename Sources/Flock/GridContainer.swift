@@ -25,6 +25,8 @@ class GridContainer: NSView {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    deinit { NotificationCenter.default.removeObserver(self) }
+
     private func setupEmptyState() {
         emptyContainer.isHidden = true
         addSubview(emptyContainer)
@@ -45,17 +47,6 @@ class GridContainer: NSView {
             let row = NSStackView()
             row.orientation = .horizontal
             row.spacing = Theme.Space.md
-
-            let keyLabel = NSTextField(labelWithString: key)
-            keyLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-            keyLabel.textColor = Theme.textTertiary
-            keyLabel.alignment = .right
-            keyLabel.setContentHuggingPriority(.defaultHigh, for: .horizontal)
-
-            let bg = NSView(frame: .zero)
-            bg.wantsLayer = true
-            bg.layer?.backgroundColor = Theme.hover.cgColor
-            bg.layer?.cornerRadius = Theme.Space.xs
 
             let descLabel = NSTextField(labelWithString: label)
             descLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)

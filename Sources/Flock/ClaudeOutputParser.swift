@@ -65,6 +65,8 @@ final class ClaudeOutputParser {
     private var idleTimer: Timer?
     private let idleTimeout: TimeInterval = 4.0
 
+    deinit { idleTimer?.invalidate() }
+
     // MARK: - ANSI stripping
 
     private static let ansiPattern: NSRegularExpression = {

@@ -104,6 +104,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
     required init?(coder: NSCoder) { fatalError() }
 
+    deinit {
+        hoverTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
+
     func update() {
         updateActiveIndicator()
         needsDisplay = true
@@ -345,11 +350,24 @@ class TabBarView: NSView, NSTextFieldDelegate {
         // Tabs — one per tabNode
         let frames = tabFrames()
         let activeTabIdx = mgr.activeTabIndex
+        let dragOffset: CGFloat
+        if let ds = dragState, ds.didPassThreshold {
+            dragOffset = ds.currentX - ds.startX
+        } else {
+            dragOffset = 0
+        }
+
         for (i, node) in mgr.tabNodes.enumerated() {
             guard i < frames.count else { break }
             if i == editingIndex { continue }
 
-            let rect = frames[i]
+            var rect = frames[i]
+            let isDragged = dragState?.sourceIndex == i && dragState?.didPassThreshold == true
+
+            // Offset the dragged tab to follow the cursor
+            if isDragged {
+                rect.origin.x += dragOffset
+            }
             let closeP = tabCloseProgress[i] ?? 0.0
             let active = (i == activeTabIdx)
             let hovered = (i == hoveredTab)
@@ -365,14 +383,25 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 ctx.clip(to: rect)
             }
 
+            // Dragged tab: draw elevated with shadow
+            if isDragged {
+                ctx.saveGState()
+                ctx.setShadow(offset: CGSize(width: 0, height: 1), blur: 6,
+                              color: NSColor.black.withAlphaComponent(0.2).cgColor)
+            }
+
             // Tab background
             let bgPath = NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6)
-            if active {
+            if isDragged || active {
                 Theme.surface.setFill()
                 bgPath.fill()
             } else if hoverAlpha > 0.01 {
                 Theme.hover.withAlphaComponent(hoverAlpha).setFill()
                 bgPath.fill()
+            }
+
+            if isDragged {
+                ctx.restoreGState()
             }
 
             // Label — color the ✱ star red when agent is active
@@ -582,6 +611,13 @@ class TabBarView: NSView, NSTextFieldDelegate {
 
     // MARK: - Interaction
 
+    override var mouseDownCanMoveWindow: Bool { false }
+
+    // Prevents the window server from claiming this area for titlebar dragging.
+    // Required for fullSizeContentView -- mouseDownCanMoveWindow alone is ignored
+    // in the titlebar region. Used by Firefox, Chrome, iTerm2, and WebKit.
+    @objc func _opaqueRectForWindowMoveWhenInTitlebar() -> NSRect { bounds }
+
     override func mouseDown(with event: NSEvent) {
         guard let mgr = paneManager else { return }
         let pt = convert(event.locationInWindow, from: nil)
@@ -598,19 +634,18 @@ class TabBarView: NSView, NSTextFieldDelegate {
         for (i, rect) in frames.enumerated() {
             let isActiveTab = (i == mgr.activeTabIndex)
             if closeButtonRect(for: rect).contains(pt) && (isActiveTab || i == hoveredTab) {
-                // Close entire tab (all panes in this node)
                 mgr.closeTab(at: i)
                 return
             }
             if rect.contains(pt) {
-                // Focus the first leaf in this tab node
+                // Focus the tab
                 if i < mgr.tabNodes.count, let firstPane = mgr.tabNodes[i].allLeaves.first,
                    let paneIdx = mgr.panes.firstIndex(where: { $0 === firstPane }) {
                     mgr.focusPane(at: paneIdx)
                 }
-                // Start potential drag
+                // Enter drag tracking loop if reorderable
                 if !mgr.isMaximized && mgr.tabNodes.count > 1 {
-                    dragState = TabDragState(sourceIndex: i, startX: pt.x, currentX: pt.x)
+                    trackTabDrag(sourceIndex: i, startX: pt.x, initialEvent: event)
                 }
                 return
             }
@@ -620,46 +655,64 @@ class TabBarView: NSView, NSTextFieldDelegate {
         if btns.claude.contains(pt) { mgr.addPane(type: .claude) }
         else if btns.shell.contains(pt) { mgr.addPane(type: .shell) }
         else if btns.agentMode.contains(pt) { mgr.toggleAgentMode() }
+        else { window?.performDrag(with: event) }
     }
 
-    override func mouseDragged(with event: NSEvent) {
-        guard var drag = dragState else { return }
-        let pt = convert(event.locationInWindow, from: nil)
-        drag.currentX = pt.x
+    /// Local event-tracking loop for tab drag reorder.
+    /// Consumes all mouse events until mouseUp, preventing the titlebar from intercepting.
+    private func trackTabDrag(sourceIndex: Int, startX: CGFloat, initialEvent: NSEvent) {
+        var currentX = startX
+        var didPassThreshold = false
 
-        if !drag.didPassThreshold && abs(pt.x - drag.startX) > 3 {
-            drag.didPassThreshold = true
-        }
-        dragState = drag
+        dragState = TabDragState(sourceIndex: sourceIndex, startX: startX, currentX: startX)
 
-        if drag.didPassThreshold {
-            needsDisplay = true
-        }
-    }
+        while let nextEvent = window?.nextEvent(matching: [.leftMouseDragged, .leftMouseUp]) {
+            let pt = convert(nextEvent.locationInWindow, from: nil)
 
-    override func mouseUp(with event: NSEvent) {
-        guard let drag = dragState, drag.didPassThreshold else {
-            dragState = nil
-            return
-        }
+            switch nextEvent.type {
+            case .leftMouseDragged:
+                currentX = pt.x
+                if !didPassThreshold && abs(currentX - startX) > 3 {
+                    didPassThreshold = true
+                }
+                dragState = TabDragState(
+                    sourceIndex: sourceIndex, startX: startX,
+                    currentX: currentX, didPassThreshold: didPassThreshold
+                )
+                if didPassThreshold {
+                    needsDisplay = true
+                    displayIfNeeded()
+                }
 
-        // Determine drop target
-        let frames = tabFrames()
-        var targetIndex = drag.sourceIndex
-        for (i, rect) in frames.enumerated() {
-            if drag.currentX < rect.midX {
-                targetIndex = i
+            case .leftMouseUp:
+                if didPassThreshold {
+                    // Compute drop target
+                    let frames = tabFrames()
+                    var targetIndex = sourceIndex
+                    for (i, rect) in frames.enumerated() {
+                        if currentX < rect.midX {
+                            targetIndex = i
+                            break
+                        }
+                        targetIndex = i + 1
+                    }
+                    targetIndex = min(targetIndex, (paneManager?.tabNodes.count ?? 1) - 1)
+                    targetIndex = max(0, targetIndex)
+
+                    if targetIndex != sourceIndex {
+                        paneManager?.reorderPane(from: sourceIndex, to: targetIndex)
+                    }
+                }
+                dragState = nil
+                needsDisplay = true
+                return
+
+            default:
                 break
             }
-            targetIndex = i + 1
-        }
-        targetIndex = min(targetIndex, (paneManager?.panes.count ?? 1) - 1)
-        targetIndex = max(0, targetIndex)
-
-        if targetIndex != drag.sourceIndex {
-            paneManager?.reorderPane(from: drag.sourceIndex, to: targetIndex)
         }
 
+        // Fallback cleanup
         dragState = nil
         needsDisplay = true
     }
@@ -802,6 +855,8 @@ class TabBarView: NSView, NSTextFieldDelegate {
         else if btns.agentMode.contains(pt) { newAgentHover = true }
 
         let tabChanged = newTab != hoveredTab
+        let changed = tabChanged || newClose != hoveredClose || newBtn != hoveredButton || newAgentHover != hoveredAgentButton
+
         hoveredTab = newTab
         hoveredClose = newClose
         hoveredButton = newBtn
@@ -811,7 +866,9 @@ class TabBarView: NSView, NSTextFieldDelegate {
             startHoverAnimation()
         }
 
-        needsDisplay = true
+        if changed {
+            needsDisplay = true
+        }
     }
 
     override func mouseExited(with event: NSEvent) {

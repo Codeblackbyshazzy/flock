@@ -270,9 +270,10 @@ private struct FuzzyMatch {
 
         // Score: tighter packing = higher score.
         // Max possible spread is target length, so invert the spread.
-        let spread = matchIndices.last! - matchIndices.first!
+        guard let first = matchIndices.first, let last = matchIndices.last else { return nil }
+        let spread = last - first
         let maxScore = 1000
-        let score = maxScore - spread * 10 - matchIndices.first! * 2
+        let score = maxScore - spread * 10 - first * 2
         guard score > 0 else { return nil }
         return FuzzyMatch(action: action, score: score)
     }

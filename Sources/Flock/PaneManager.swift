@@ -370,7 +370,7 @@ class PaneManager {
     // MARK: - Navigation
 
     func navigateDirection(_ dir: Direction) {
-        guard panes.count > 1, activePaneIndex >= 0 else { return }
+        guard !isMaximized, panes.count > 1, activePaneIndex >= 0, activePaneIndex < panes.count else { return }
         let dims = gridDimensions(for: panes.count)
         let cols = dims.cols
         let row = activePaneIndex / cols
