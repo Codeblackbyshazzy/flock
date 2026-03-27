@@ -244,7 +244,7 @@ class UsageTracker {
                 let prev = self?.limits ?? Limits()
                 var capped = Limits()
                 capped.available = true
-                capped.fiveHourPercent = 1.0
+                capped.fiveHourPercent = 100.0
                 capped.sevenDayPercent = prev.sevenDayPercent
                 capped.sevenDayResetsAt = prev.sevenDayResetsAt
                 capped.fiveHourResetsAt = prev.fiveHourResetsAt ?? self?.parseResetFromSessions()
@@ -304,9 +304,9 @@ class UsageTracker {
     }
 
     /// Convert raw utilization value to integer percentage.
-    /// The API returns a fraction (e.g. 0.33 = 33%).
+    /// The API returns percentages directly (e.g. 33.0 = 33%) -- do not scale.
     private func utilPercent(_ raw: Double) -> Int {
-        return min(max(Int(raw * 100), 0), 999)
+        return min(max(Int(raw), 0), 999)
     }
 
     var formattedLimit: String? {
