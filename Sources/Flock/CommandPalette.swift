@@ -189,6 +189,12 @@ class CommandPalette {
                 self?.paneManager?.focusPane(at: i - 1)
             }
         } + [
+            CommandAction(name: "Toggle Change Log", shortcut: "⌘⇧L", category: "View") { [weak self] in
+                guard let mgr = self?.paneManager else { return }
+                let idx = mgr.activePaneIndex
+                guard idx >= 0, idx < mgr.panes.count else { return }
+                mgr.panes[idx].toggleChangeLog()
+            },
             CommandAction(name: "Toggle Memory", shortcut: "⌘⇧M", category: "View") { [weak self] in
                 guard let win = self?.window else { return }
                 (NSApp.delegate as? AppDelegate)?.memorySidebar.toggle(in: win)

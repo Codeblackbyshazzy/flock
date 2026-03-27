@@ -6,7 +6,7 @@ class PreferencesView: NSView {
 
     // MARK: - Controls
 
-    private let themeControl = NSSegmentedControl()
+    private var themeSwatchViews: [NSView] = []
     private let fontSizeSlider = NSSlider()
     private let fontSizeLabel = NSTextField(labelWithString: "")
     private let paneTypeControl = NSSegmentedControl()
@@ -81,18 +81,47 @@ class PreferencesView: NSView {
         addLabel("Theme", y: y)
 
         let themes = Themes.all
-        themeControl.segmentCount = themes.count
-        for (i, t) in themes.enumerated() {
-            themeControl.setLabel(t.name, forSegment: i)
-            if t.id == Settings.shared.themeId { themeControl.selectedSegment = i }
-        }
-        themeControl.segmentStyle = .rounded
-        themeControl.target = self
-        themeControl.action = #selector(themeChanged(_:))
-        themeControl.frame = NSRect(x: controlX, y: y + 2, width: controlWidth + 60, height: 24)
-        addSubview(themeControl)
+        let swatchW: CGFloat = 34
+        let swatchH: CGFloat = 28
+        let swatchGap: CGFloat = 6
+        let containerH: CGFloat = swatchH + 16
+        var swatchX = controlX
 
-        y += rowHeight
+        for (i, t) in themes.enumerated() {
+            let chip = ClickableView(frame: NSRect(x: swatchX, y: y, width: swatchW, height: containerH))
+            chip.wantsLayer = true
+            chip.onClick = { [weak self] in self?.selectTheme(at: i) }
+
+            // Color swatch (visual top of container)
+            let swatch = NSView(frame: NSRect(x: 0, y: containerH - swatchH, width: swatchW, height: swatchH))
+            swatch.wantsLayer = true
+            swatch.layer?.cornerRadius = 6
+            swatch.layer?.masksToBounds = true
+            swatch.layer?.backgroundColor = t.surface.cgColor
+            swatch.identifier = NSUserInterfaceItemIdentifier("swatch")
+
+            let accentBar = CALayer()
+            accentBar.frame = CGRect(x: 0, y: 0, width: swatchW, height: 5)
+            accentBar.backgroundColor = t.accent.cgColor
+            swatch.layer?.addSublayer(accentBar)
+
+            chip.addSubview(swatch)
+
+            // Name label (visual bottom of container)
+            let name = NSTextField(labelWithString: t.name)
+            name.alignment = .center
+            name.frame = NSRect(x: -3, y: 2, width: swatchW + 6, height: 12)
+            name.identifier = NSUserInterfaceItemIdentifier("name")
+            chip.addSubview(name)
+
+            addSubview(chip)
+            themeSwatchViews.append(chip)
+            swatchX += swatchW + swatchGap
+        }
+
+        updateSwatchSelection(selectedIndex: themes.firstIndex(where: { $0.id == settings.themeId }) ?? 0)
+
+        y += 48
 
         // ── Terminal ──
         y += sectionGap - rowHeight
@@ -288,12 +317,29 @@ class PreferencesView: NSView {
 
     // MARK: - Actions
 
-    @objc private func themeChanged(_ sender: NSSegmentedControl) {
+    private func selectTheme(at index: Int) {
         let themes = Themes.all
-        guard sender.selectedSegment >= 0, sender.selectedSegment < themes.count else { return }
-        let theme = themes[sender.selectedSegment]
+        guard index >= 0, index < themes.count else { return }
+        let theme = themes[index]
         Settings.shared.themeId = theme.id
         Theme.active = theme
+        updateSwatchSelection(selectedIndex: index)
+    }
+
+    private func updateSwatchSelection(selectedIndex: Int) {
+        let themes = Themes.all
+        for (i, container) in themeSwatchViews.enumerated() {
+            let t = themes[i]
+            let isSelected = (i == selectedIndex)
+            if let swatch = container.subviews.first(where: { $0.identifier?.rawValue == "swatch" }) {
+                swatch.layer?.borderWidth = isSelected ? 2 : 1
+                swatch.layer?.borderColor = isSelected ? t.accent.cgColor : t.divider.cgColor
+            }
+            if let name = container.subviews.first(where: { $0.identifier?.rawValue == "name" }) as? NSTextField {
+                name.font = NSFont.systemFont(ofSize: 9, weight: isSelected ? .semibold : .medium)
+                name.textColor = isSelected ? Theme.textPrimary : Theme.textSecondary
+            }
+        }
     }
 
     @objc private func fontSizeChanged(_ sender: NSSlider) {
@@ -336,5 +382,18 @@ class PreferencesView: NSView {
     @objc private func done(_ sender: Any) {
         guard let panel = panel, let host = hostWindow else { return }
         host.endSheet(panel)
+    }
+
+    // MARK: - Clickable Swatch View
+
+    private class ClickableView: NSView {
+        var onClick: (() -> Void)?
+        override func mouseDown(with event: NSEvent) { onClick?() }
+        override func hitTest(_ point: NSPoint) -> NSView? {
+            return frame.contains(point) ? self : nil
+        }
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: .pointingHand)
+        }
     }
 }

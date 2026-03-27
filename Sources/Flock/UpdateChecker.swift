@@ -13,6 +13,23 @@ final class UpdateChecker {
         let notes: String?
     }
 
+    struct ChangelogEntry {
+        let version: String
+        let date: String
+        let changes: [String]
+    }
+
+    // Local changelog - update manually when cutting a release
+    static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.8.0", date: "2026-03-15", changes: [
+            "Agent mode with parallel task execution",
+            "Memory system for persistent context across sessions",
+            "Usage tracking dashboard",
+            "Session restore improvements",
+            "Global hotkey (Ctrl+`) to summon Flock from anywhere",
+        ]),
+    ]
+
     // MARK: - Public
 
     /// Check on launch (once per session, respects setting)
@@ -25,6 +42,73 @@ final class UpdateChecker {
     /// Manual check from menu (always shows result)
     func checkNow() {
         check(silent: false)
+    }
+
+    // MARK: - Post-update detection
+
+    /// Returns true if app version changed since last launch (user just updated)
+    func detectPostUpdate() -> Bool {
+        let current = currentVersion
+        let last = Settings.shared.lastRunVersion
+
+        // First run with this feature - save version, skip changelog
+        guard let last else {
+            Settings.shared.lastRunVersion = current
+            return false
+        }
+
+        if last != current {
+            Settings.shared.lastRunVersion = current
+            return true
+        }
+
+        return false
+    }
+
+    /// Build formatted changelog text for terminal display.
+    /// Shows all entries between previousVersion and currentVersion.
+    func formattedChangelog(previousVersion: String?) -> String {
+        let current = currentVersion
+        let entries = Self.localChangelog.filter { entry in
+            if let prev = previousVersion {
+                return isNewer(entry.version, than: prev)
+                    && !isNewer(entry.version, than: current)
+            }
+            return entry.version == current
+        }
+
+        let bold = "\u{1B}[1m"
+        let dim = "\u{1B}[2m"
+        let cyan = "\u{1B}[36m"
+        let green = "\u{1B}[32m"
+        let reset = "\u{1B}[0m"
+        let white = "\u{1B}[37m"
+
+        var lines: [String] = []
+        lines.append("")
+        lines.append("  \(bold)\(cyan)Flock v\(current) - What's New\(reset)")
+        lines.append("  \(dim)Updated successfully\(reset)")
+        lines.append("")
+
+        if entries.isEmpty {
+            lines.append("  \(white)Bug fixes and improvements.\(reset)")
+        } else {
+            for entry in entries {
+                if entries.count > 1 {
+                    lines.append("  \(bold)\(white)v\(entry.version)\(reset) \(dim)(\(entry.date))\(reset)")
+                }
+                for change in entry.changes {
+                    lines.append("  \(green)+\(reset) \(white)\(change)\(reset)")
+                }
+                if entries.count > 1 { lines.append("") }
+            }
+        }
+
+        lines.append("")
+        lines.append("  \(dim)Close this tab anytime (Cmd+W)\(reset)")
+        lines.append("")
+
+        return lines.joined(separator: "\n")
     }
 
     // MARK: - Core
@@ -55,7 +139,7 @@ final class UpdateChecker {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? FlockVersion.current
     }
 
-    private func isNewer(_ remote: String, than local: String) -> Bool {
+    func isNewer(_ remote: String, than local: String) -> Bool {
         let r = remote.split(separator: ".").compactMap { Int($0) }
         let l = local.split(separator: ".").compactMap { Int($0) }
         for i in 0..<max(r.count, l.count) {

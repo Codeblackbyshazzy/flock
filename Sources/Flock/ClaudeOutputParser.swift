@@ -59,13 +59,73 @@ enum AgentState: String {
 /// then match against known tokens.
 final class ClaudeOutputParser {
 
+    struct ActionEntry {
+        let type: AgentActionType
+        let target: String
+        let timestamp: Date
+    }
+
     private(set) var state: AgentState = .idle
+    private(set) var actions: [ActionEntry] = []
     var onStateChange: ((AgentState) -> Void)?
+    var onAction: ((ActionEntry) -> Void)?
 
     private var idleTimer: Timer?
     private let idleTimeout: TimeInterval = 4.0
 
-    deinit { idleTimer?.invalidate() }
+    deinit {
+        idleTimer?.invalidate()
+        dedupeResetTimer?.invalidate()
+    }
+
+    // MARK: - Tool call extraction
+
+    private static let toolCallPattern: NSRegularExpression = {
+        // Matches patterns like "Edit(path/to/file.swift)" or "Bash(npm test)"
+        let pattern = "\\b(Edit|Write|Read|Bash|Grep|Glob|Agent|WebSearch|WebFetch)\\(([^)]{1,200})\\)"
+        return try! NSRegularExpression(pattern: pattern)
+    }()
+
+    private static let toolToActionType: [String: AgentActionType] = [
+        "Edit": .edit, "Write": .write, "Read": .read,
+        "Bash": .bash, "Grep": .search, "Glob": .search,
+        "Agent": .agent, "WebSearch": .web, "WebFetch": .web,
+    ]
+
+    private var recentTargets: Set<String> = []
+    private var dedupeResetTimer: Timer?
+
+    private func extractActions(_ text: String) {
+        let range = NSRange(text.startIndex..., in: text)
+        let matches = Self.toolCallPattern.matches(in: text, range: range)
+
+        for match in matches {
+            guard let toolRange = Range(match.range(at: 1), in: text),
+                  let argRange = Range(match.range(at: 2), in: text) else { continue }
+
+            let tool = String(text[toolRange])
+            let target = String(text[argRange])
+            guard let type = Self.toolToActionType[tool] else { continue }
+
+            // Dedupe -- terminal redraws repeat the same line many times
+            let key = "\(tool):\(target)"
+            guard !recentTargets.contains(key) else { continue }
+            recentTargets.insert(key)
+
+            // Clear dedupe set after 3s of no new matches
+            dedupeResetTimer?.invalidate()
+            dedupeResetTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { [weak self] _ in
+                self?.recentTargets.removeAll()
+            }
+
+            let entry = ActionEntry(type: type, target: target, timestamp: Date())
+            actions.append(entry)
+            let e = entry
+            DispatchQueue.main.async { [weak self] in
+                self?.onAction?(e)
+            }
+        }
+    }
 
     // MARK: - ANSI stripping
 
@@ -90,6 +150,7 @@ final class ClaudeOutputParser {
                           .joined(separator: " ")
         guard !compact.isEmpty else { return }
 
+        extractActions(compact)
         let detected = detectState(compact)
 
         // Only transition away from idle if we found something;
@@ -112,7 +173,10 @@ final class ClaudeOutputParser {
     func reset() {
         idleTimer?.invalidate()
         idleTimer = nil
+        dedupeResetTimer?.invalidate()
+        recentTargets.removeAll()
         state = .idle
+        actions.removeAll()
     }
 
     // MARK: - Detection

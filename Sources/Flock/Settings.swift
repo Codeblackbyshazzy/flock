@@ -25,6 +25,7 @@ class Settings {
         case memoryEnabled
         case showUsageTracker
         case autoCheckUpdates
+        case lastRunVersion
     }
 
     var themeId: String {
@@ -117,6 +118,11 @@ class Settings {
             return defaults.bool(forKey: Key.autoCheckUpdates.rawValue)
         }
         set { defaults.set(newValue, forKey: Key.autoCheckUpdates.rawValue); post(.autoCheckUpdates) }
+    }
+
+    var lastRunVersion: String? {
+        get { defaults.string(forKey: Key.lastRunVersion.rawValue) }
+        set { defaults.set(newValue, forKey: Key.lastRunVersion.rawValue) }
     }
 
     // ANSI color overrides per theme

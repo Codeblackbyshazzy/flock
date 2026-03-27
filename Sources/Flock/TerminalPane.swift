@@ -29,6 +29,8 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
 
     // Current working directory (for session restore + title bar)
     var currentDirectory: String?
+    // Initial directory (for context file writes)
+    private var contextDirectory: String?
 
     // Temp ZDOTDIR for shell enhancements (cleaned up on shutdown)
     private var zdotdir: String?
@@ -38,6 +40,10 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         didSet { updateAccentBar() }
     }
     private let accentBarLayer = CALayer()
+
+    // Change log overlay
+    private var changeLogView: ChangeLogView?
+    private(set) var isChangeLogVisible: Bool = false
 
     // Command timing
     private(set) var commandStartTime: Date?
@@ -146,6 +152,10 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
             // broad (matches "error:" in code output) and causes spam
         }
 
+        outputParser.onAction = { [weak self] entry in
+            self?.changeLogView?.addAction(entry)
+        }
+
         // Terminal
         let fontSize = Settings.shared.fontSize
         terminalView.nativeBackgroundColor = Theme.terminalBg
@@ -168,9 +178,9 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         }
 
         if type == .claude {
+            contextDirectory = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
             if Settings.shared.memoryEnabled {
-                let contextDir = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
-                MemoryStore.shared.writeContextFile(to: contextDir)
+                MemoryStore.shared.writeContextFile(to: contextDirectory!)
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
@@ -184,6 +194,10 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
                                                name: Settings.didChange, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(themeDidChange),
                                                name: Theme.themeDidChange, object: nil)
+        if type == .claude {
+            NotificationCenter.default.addObserver(self, selector: #selector(memoryDidChange),
+                                                   name: MemoryStore.didChange, object: nil)
+        }
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -198,7 +212,18 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         guard let key = note.userInfo?["key"] as? String else { return }
         if key == "fontSize" {
             terminalView.font = NSFont.monospacedSystemFont(ofSize: Settings.shared.fontSize, weight: .regular)
+        } else if key == "memoryEnabled", let dir = contextDirectory {
+            if Settings.shared.memoryEnabled {
+                MemoryStore.shared.writeContextFile(to: dir)
+            } else {
+                MemoryStore.shared.removeContextFile(from: dir)
+            }
         }
+    }
+
+    @objc private func memoryDidChange() {
+        guard let dir = contextDirectory, Settings.shared.memoryEnabled else { return }
+        MemoryStore.shared.writeContextFile(to: dir)
     }
 
     @objc private func themeDidChange() {
@@ -306,6 +331,60 @@ class TerminalPane: NSView, LocalProcessTerminalViewDelegate {
         }
 
         CATransaction.commit()
+    }
+
+    // MARK: - Change Log
+
+    func toggleChangeLog() {
+        guard type == .claude else { return }
+
+        if isChangeLogVisible {
+            hideChangeLog()
+        } else {
+            showChangeLog()
+        }
+    }
+
+    private func showChangeLog() {
+        guard changeLogView == nil else { return }
+
+        let panel = ChangeLogView(frame: .zero)
+        panel.onClose = { [weak self] in self?.hideChangeLog() }
+
+        // Feed existing actions from the parser
+        for action in outputParser.actions {
+            panel.addAction(action)
+        }
+
+        let h = panel.idealHeight()
+        let x = clipView.bounds.width - panel.panelWidth - 8
+        let y = clipView.bounds.height - h - 8
+        panel.frame = NSRect(x: x, y: y, width: panel.panelWidth, height: h)
+        panel.alphaValue = 0
+
+        clipView.addSubview(panel)
+        changeLogView = panel
+        isChangeLogVisible = true
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = Theme.Anim.normal
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            panel.animator().alphaValue = 1
+        }
+    }
+
+    private func hideChangeLog() {
+        guard let panel = changeLogView else { return }
+        isChangeLogVisible = false
+
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = Theme.Anim.fast
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            panel.removeFromSuperview()
+            self?.changeLogView = nil
+        })
     }
 
     // MARK: - Entrance / Exit animations

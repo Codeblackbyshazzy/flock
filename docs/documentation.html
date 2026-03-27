@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flock docs</title>
+  <meta name="description" content="Documentation for Flock — the native macOS terminal multiplexer for parallel Claude Code sessions.">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F4ED;
+      --bg-alt: #E8E3DA;
+      --bg-warm: #FAF7F0;
+      --ink: #2C2520;
+      --ink-soft: #6A6560;
+      --ink-faint: #8A857E;
+      --accent: #9B8574;
+      --accent-dark: #7A6B5C;
+      --green: #5B9A6B;
+      --blue: #5B7FA5;
+      --border: #D4CEC3;
+      --sidebar-w: 240px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+
+    body {
+      font-family: 'Silkscreen', cursive;
+      background: var(--bg);
+      color: var(--ink);
+      overflow-x: hidden;
+    }
+
+    /* === PIXEL GRID OVERLAY === */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.018) 1px, transparent 1px);
+      background-size: 8px 8px;
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* === SCANLINE OVERLAY === */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0,0,0,0.006) 3px,
+        rgba(0,0,0,0.006) 6px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ============================================
+       TOP HEADER
+       ============================================ */
+    .top-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: var(--ink);
+      border-bottom: 3px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      z-index: 100;
+    }
+
+    .top-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-header-icon {
+      width: 24px;
+      height: 24px;
+      image-rendering: pixelated;
+    }
+
+    .top-header-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.55rem;
+      color: var(--bg);
+      letter-spacing: 0.1em;
+    }
+
+    .top-header-title span {
+      color: var(--accent);
+    }
+
+    .top-header-back {
+      font-family: 'VT323', monospace;
+      font-size: 1.1rem;
+      color: var(--bg);
+      text-decoration: none;
+      opacity: 0.6;
+      transition: opacity 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .top-header-back:hover { opacity: 1; }
+
+    .mobile-menu-btn {
+      display: none;
+      background: none;
+      border: 2px solid var(--accent);
+      color: var(--bg);
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      padding: 2px 10px;
+      cursor: pointer;
+    }
+
+    /* ============================================
+       SIDEBAR
+       ============================================ */
+    .sidebar {
+      position: fixed;
+      top: 51px;
+      left: 0;
+      bottom: 0;
+      width: var(--sidebar-w);
+      background: var(--bg-alt);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 20px 0;
+      z-index: 50;
+    }
+
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-track { background: transparent; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); }
+
+    .sidebar-group {
+      margin-bottom: 16px;
+    }
+
+    .sidebar-group-label {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.3rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      padding: 0 16px;
+      margin-bottom: 6px;
+    }
+
+    .sidebar-link {
+      display: block;
+      font-family: 'VT323', monospace;
+      font-size: 1.05rem;
+      color: var(--ink-soft);
+      text-decoration: none;
+      padding: 4px 16px 4px 20px;
+      border-left: 3px solid transparent;
+      transition: all 0.05s steps(1);
+      line-height: 1.4;
+    }
+
+    .sidebar-link:hover {
+      color: var(--ink);
+      background: var(--bg-warm);
+    }
+
+    .sidebar-link.active {
+      color: var(--ink);
+      border-left-color: var(--accent);
+      background: var(--bg);
+      font-weight: 700;
+    }
+
+    /* ============================================
+       MAIN CONTENT
+       ============================================ */
+    .main {
+      margin-left: var(--sidebar-w);
+      padding: 72px 48px 48px;
+      max-width: calc(100% - var(--sidebar-w));
+    }
+
+    .content-inner {
+      max-width: 760px;
+    }
+
+    /* ============================================
+       HERO
+       ============================================ */
+    .docs-hero {
+      padding: 48px 0 40px;
+      position: relative;
+    }
+
+    .docs-hero h1 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      font-weight: 400;
+      letter-spacing: 0.06em;
+      line-height: 1.4;
+      margin-bottom: 1rem;
+      text-shadow: 3px 3px 0 rgba(155, 133, 116, 0.25);
+    }
+
+    .docs-hero .tagline {
+      font-family: 'VT323', monospace;
+      font-size: 1.4rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+      max-width: 540px;
+    }
+
+    .version-badge {
+      display: inline-block;
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+      padding: 2px 10px;
+      margin-top: 12px;
+    }
+
+    /* ============================================
+       SECTIONS
+       ============================================ */
+    .doc-section {
+      padding: 40px 0;
+    }
+
+    .section-label {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.45rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(0.75rem, 2vw, 1.1rem);
+      line-height: 1.8;
+      margin-bottom: 0.75rem;
+      text-shadow: 2px 2px 0 rgba(155, 133, 116, 0.15);
+    }
+
+    .section-intro {
+      font-family: 'VT323', monospace;
+      color: var(--ink-soft);
+      font-size: 1.2rem;
+      line-height: 1.5;
+      max-width: 580px;
+      margin-bottom: 2rem;
+    }
+
+    /* ============================================
+       DITHERED DIVIDERS
+       ============================================ */
+    .dither {
+      height: 8px;
+      opacity: 0.07;
+      background-image:
+        linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%),
+        linear-gradient(45deg, var(--ink) 25%, transparent 25%, transparent 75%, var(--ink) 75%);
+      background-size: 4px 4px;
+      background-position: 0 0, 2px 2px;
+    }
+
+    .dither-accent {
+      height: 6px;
+      opacity: 0.12;
+      background-image:
+        linear-gradient(45deg, var(--accent) 25%, transparent 25%, transparent 75%, var(--accent) 75%),
+        linear-gradient(45deg, var(--accent) 25%, transparent 25%, transparent 75%, var(--accent) 75%);
+      background-size: 4px 4px;
+      background-position: 0 0, 2px 2px;
+    }
+
+    /* ============================================
+       PROSE & TYPOGRAPHY
+       ============================================ */
+    .prose p {
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      line-height: 1.55;
+      color: var(--ink-soft);
+      margin-bottom: 1rem;
+      max-width: 600px;
+    }
+
+    .prose strong {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .prose h3 {
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin: 2rem 0 0.75rem;
+      color: var(--ink);
+    }
+
+    .prose h4 {
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.75rem;
+      font-weight: 400;
+      margin: 1.5rem 0 0.5rem;
+      color: var(--accent-dark);
+    }
+
+    .prose ul, .prose ol {
+      font-family: 'VT323', monospace;
+      font-size: 1.15rem;
+      line-height: 1.5;
+      color: var(--ink-soft);
+      margin: 0 0 1rem 1.5rem;
+    }
+
+    .prose li { margin-bottom: 0.35rem; }
+
+    .prose a {
+      color: var(--accent-dark);
+      text-decoration: underline;
+      text-decoration-style: dotted;
+      text-underline-offset: 3px;
+    }
+    .prose a:hover {
+      color: var(--ink);
+    }
+
+    /* ============================================
+       CODE BLOCKS — Terminal pane style
+       ============================================ */
+    .code-block {
+      background: var(--bg-warm);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 1rem 0 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 3px 12px rgba(0,0,0,0.04);
+    }
+
+    .code-block-titlebar {
+      height: 26px;
+      background: var(--bg-alt);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-block-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+
+    .code-block-label {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 10px;
+      color: var(--ink-faint);
+      margin-left: 4px;
+    }
+
+    .code-block pre {
+      padding: 14px 16px;
+      font-family: 'Menlo', 'SF Mono', 'Monaco', monospace;
+      font-size: 12.5px;
+      line-height: 1.7;
+      color: var(--ink);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .code-block .prompt { color: var(--accent); font-weight: 600; }
+    .code-block .comment { color: var(--ink-faint); }
+    .code-block .string { color: var(--green); }
+    .code-block .keyword { color: var(--blue); }
+
+    /* Inline code */
+    .prose code, .inline-code {
+      font-family: 'Menlo', 'SF Mono', monospace;
+      font-size: 0.9em;
+      background: var(--bg-alt);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 3px;
+      color: var(--accent-dark);
+    }
+
+    /* ============================================
+       KEYCAP COMPONENTS
+       ============================================ */
+    .shortcut-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      max-width: 640px;
+      margin: 1rem 0 2rem;
+    }
+
+    .keycap {
+      background: var(--bg);
+      border: 3px solid var(--ink);
+      border-bottom-width: 6px;
+      padding: 14px 8px;
+      text-align: center;
+      transition: all 0.05s steps(1);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .keycap:hover,
+    .keycap.pressed {
+      border-bottom-width: 3px;
+      transform: translateY(3px);
+      background: var(--bg-warm);
+    }
+
+    .keycap.flash kbd { color: var(--accent); }
+
+    .keycap kbd {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.35rem;
+      display: block;
+      margin-bottom: 6px;
+      color: var(--ink);
+      line-height: 1.4;
+      transition: color 0.1s;
+    }
+
+    .keycap span {
+      font-family: 'VT323', monospace;
+      font-size: 0.95rem;
+      color: var(--ink-faint);
+    }
+
+    /* Extended shortcut table */
+    .shortcut-table {
+      width: 100%;
+      max-width: 640px;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+
+    .shortcut-table th {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.3rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-align: left;
+      padding: 8px 0;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .shortcut-table td {
+      font-family: 'VT323', monospace;
+      font-size: 1.1rem;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink-soft);
+    }
+
+    .shortcut-table td:first-child {
+      font-family: 'Menlo', 'SF Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--ink);
+      width: 140px;
+    }
+
+    /* ============================================
+       THEME SWATCHES
+       ============================================ */
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 1.5rem 0;
+    }
+
+    .theme-card {
+      border: 3px solid var(--ink);
+      background: var(--bg);
+      position: relative;
+      transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
+      cursor: default;
+    }
+
+    .theme-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 2px 2px 0 var(--accent);
+    }
+
+    .theme-card-preview {
+      height: 80px;
+      display: flex;
+      align-items: stretch;
+      border-bottom: 2px solid var(--ink);
+      overflow: hidden;
+    }
+
+    .theme-card-chrome {
+      width: 32%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 3px;
+      border-right: 1px solid rgba(0,0,0,0.1);
+    }
+
+    .theme-card-surface {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 8px 10px;
+    }
+
+    .theme-card-text-line {
+      height: 3px;
+      border-radius: 1px;
+      margin-bottom: 4px;
+    }
+
+    .theme-card-accent-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+
+    .theme-card-cursor-line {
+      width: 6px;
+      height: 10px;
+      opacity: 0.6;
+    }
+
+    .theme-card-info {
+      padding: 10px 12px;
+    }
+
+    .theme-card-name {
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    .theme-card-desc {
+      font-family: 'VT323', monospace;
+      font-size: 0.95rem;
+      color: var(--ink-faint);
+    }
+
+    /* ============================================
+       LAYOUT DIAGRAM
+       ============================================ */
+    .layout-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 12px;
+      margin: 1.5rem 0;
+    }
+
+    .layout-diagram {
+      border: 3px solid var(--ink);
+      aspect-ratio: 4/3;
+      display: grid;
+      gap: 3px;
+      padding: 4px;
+      background: var(--bg-alt);
+    }
+
+    .layout-diagram .pane {
+      background: var(--bg-warm);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      min-height: 0;
+    }
+
+    .layout-label {
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
+      color: var(--ink-faint);
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    /* ============================================
+       AGENT TIMELINE
+       ============================================ */
+    .timeline {
+      margin: 1.5rem 0;
+      max-width: 500px;
+    }
+
+    .timeline-event {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-left: 2px solid var(--border);
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .timeline-event::before {
+      content: '';
+      position: absolute;
+      left: -5px;
+      width: 8px;
+      height: 8px;
+      background: var(--bg);
+      border: 2px solid var(--accent);
+    }
+
+    .timeline-badge {
+      font-family: 'Menlo', 'SF Mono', monospace;
+      font-size: 10px;
+      font-weight: 700;
+      width: 24px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid;
+      flex-shrink: 0;
+    }
+
+    .timeline-badge.think  { color: var(--ink-faint); border-color: var(--ink-faint); }
+    .timeline-badge.read   { color: var(--blue); border-color: var(--blue); }
+    .timeline-badge.edit   { color: var(--green); border-color: var(--green); }
+    .timeline-badge.write  { color: #8B5CF6; border-color: #8B5CF6; }
+    .timeline-badge.bash   { color: var(--accent); border-color: var(--accent); }
+    .timeline-badge.search { color: #D97706; border-color: #D97706; }
+
+    .timeline-text {
+      font-family: 'VT323', monospace;
+      font-size: 1.05rem;
+      color: var(--ink-soft);
+    }
+
+    /* (kanban styles removed -- agent mode uses three-panel layout) */
+
+    /* ============================================
+       INFO CARDS
+       ============================================ */
+    .info-card {
+      border: 3px solid var(--ink);
+      background: var(--bg);
+      padding: 20px 24px;
+      margin: 1.5rem 0;
+      position: relative;
+      transition: transform 0.05s steps(1), box-shadow 0.05s steps(1);
+    }
+
+    .info-card:hover {
+      transform: translate(-2px, -2px);
+      box-shadow: 2px 2px 0 var(--accent);
+    }
+
+    .info-card .icon {
+      font-family: 'VT323', monospace;
+      font-size: 1.8rem;
+      color: var(--accent);
+      display: block;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .info-card h3 {
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .info-card p {
+      font-family: 'VT323', monospace;
+      color: var(--ink-soft);
+      font-size: 1.1rem;
+      line-height: 1.4;
+    }
+
+    /* Feature row */
+    .feature-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 1.5rem 0;
+    }
+
+    /* ============================================
+       CONFIG TABLE
+       ============================================ */
+    .config-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1.5rem 0;
+    }
+
+    .config-table th {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.28rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 2px solid var(--ink);
+    }
+
+    .config-table td {
+      font-family: 'VT323', monospace;
+      font-size: 1.05rem;
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      color: var(--ink-soft);
+      vertical-align: top;
+    }
+
+    .config-table td:first-child {
+      font-family: 'Menlo', 'SF Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--ink);
+      white-space: nowrap;
+    }
+
+    .config-table td:last-child {
+      font-family: 'Menlo', 'SF Mono', monospace;
+      font-size: 0.8rem;
+      color: var(--accent-dark);
+    }
+
+    /* ============================================
+       PILL / TAG
+       ============================================ */
+    .pill {
+      display: inline-block;
+      padding: 5px 12px;
+      font-family: 'VT323', monospace;
+      font-size: 1rem;
+      border: 2px solid var(--ink);
+      background: var(--bg);
+      color: var(--ink-soft);
+      box-shadow: 2px 2px 0 var(--border);
+      transition: all 0.05s steps(1);
+      margin: 0 4px 6px 0;
+    }
+
+    .pill:hover {
+      transform: translate(-1px, -1px);
+      box-shadow: 3px 3px 0 var(--border);
+      background: var(--bg-warm);
+    }
+
+    /* ============================================
+       SCROLL REVEAL
+       ============================================ */
+    .reveal {
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.3s steps(5), transform 0.3s steps(5);
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .docs-footer {
+      background: var(--ink);
+      text-align: center;
+      padding: 2rem;
+      font-family: 'Silkscreen', cursive;
+      font-size: 0.7rem;
+      color: var(--ink-faint);
+      border-top: 3px solid var(--accent);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .footer-landscape {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 20px;
+      opacity: 0.06;
+      background:
+        linear-gradient(135deg, var(--bg) 33.33%, transparent 33.33%) 0 0 / 40px 20px repeat-x,
+        linear-gradient(225deg, var(--bg) 33.33%, transparent 33.33%) 0 0 / 40px 20px repeat-x;
+    }
+
+    .docs-footer a {
+      color: var(--bg);
+      text-decoration: none;
+    }
+    .docs-footer a:hover { color: var(--accent); }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 900px) {
+      .sidebar {
+        position: fixed;
+        top: 51px;
+        left: -260px;
+        width: 260px;
+        transition: left 0.15s steps(3);
+        box-shadow: none;
+        z-index: 90;
+      }
+      .sidebar.open {
+        left: 0;
+        box-shadow: 8px 0 24px rgba(0,0,0,0.12);
+      }
+      .main {
+        margin-left: 0;
+        max-width: 100%;
+        padding: 72px 24px 48px;
+      }
+      .mobile-menu-btn { display: block; }
+      .shortcut-grid { grid-template-columns: repeat(2, 1fr); }
+      .feature-row { grid-template-columns: 1fr; }
+      .kanban-demo { grid-template-columns: 1fr; }
+      .theme-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 480px) {
+      .main { padding: 64px 16px 32px; }
+      .shortcut-grid { grid-template-columns: 1fr 1fr; }
+      .layout-grid { grid-template-columns: repeat(3, 1fr); }
+      .theme-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ============================================
+       REDUCED MOTION
+       ============================================ */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="top-header">
+    <div class="top-header-left">
+      <img src="icon.png" class="top-header-icon" alt="flock">
+      <div class="top-header-title">flock <span>docs</span></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <a href="index.html" class="top-header-back">&larr; home</a>
+      <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">&#9776;</button>
+    </div>
+  </header>
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">start</div>
+      <a href="#getting-started" class="sidebar-link">Getting Started</a>
+      <a href="#installation" class="sidebar-link">Installation</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">core</div>
+      <a href="#panes" class="sidebar-link">Pane Management</a>
+      <a href="#agent-mode" class="sidebar-link">Agent Mode</a>
+      <a href="#command-palette" class="sidebar-link">Command Palette</a>
+      <a href="#broadcast" class="sidebar-link">Broadcast Mode</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">reference</div>
+      <a href="#shortcuts" class="sidebar-link">Keyboard Shortcuts</a>
+      <a href="#themes" class="sidebar-link">Themes</a>
+      <a href="#find" class="sidebar-link">Find & Search</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">features</div>
+      <a href="#session-restore" class="sidebar-link">Session Restore</a>
+      <a href="#memory" class="sidebar-link">Memory System</a>
+      <a href="#notifications" class="sidebar-link">Notifications</a>
+      <a href="#global-hotkey" class="sidebar-link">Global Hotkey</a>
+    </div>
+    <div class="sidebar-group">
+      <div class="sidebar-group-label">config</div>
+      <a href="#configuration" class="sidebar-link">Configuration</a>
+      <a href="#building" class="sidebar-link">Building from Source</a>
+    </div>
+  </nav>
+
+  <!-- ==================== MAIN ==================== -->
+  <main class="main">
+    <div class="content-inner">
+
+      <!-- HERO -->
+      <div class="docs-hero">
+        <h1>docs</h1>
+        <p class="tagline">everything you need to know about running parallel claude code sessions in one tiny window.</p>
+        <div class="version-badge">v0.8.0</div>
+      </div>
+
+      <div class="dither"></div>
+
+      <!-- ==================== GETTING STARTED ==================== -->
+      <section class="doc-section reveal" id="getting-started">
+        <div class="section-label">// getting started</div>
+        <div class="section-title">up and running<br>in 30 seconds</div>
+        <div class="prose">
+          <p>flock is a native macOS app. no electron, no web views, no runtime dependencies. download it, open it, press <code>&#8984;T</code> to spawn your first claude session.</p>
+
+          <h3>System Requirements</h3>
+          <ul>
+            <li>macOS 13 (Ventura) or later</li>
+            <li>Apple Silicon or Intel</li>
+            <li>Claude Code CLI installed (<code>npm install -g @anthropic-ai/claude-code</code>)</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ==================== INSTALLATION ==================== -->
+      <section class="doc-section reveal" id="installation">
+        <div class="section-label">// installation</div>
+        <div class="section-title">three ways to install</div>
+
+        <div class="prose">
+          <h3>Homebrew (recommended)</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-block-titlebar">
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <span class="code-block-label">terminal</span>
+          </div>
+          <pre><span class="prompt">$</span> brew tap divagation/flock
+<span class="prompt">$</span> brew install --cask flockapp</pre>
+        </div>
+
+        <div class="prose">
+          <h3>Direct Download</h3>
+          <p>Grab the latest <code>.pkg</code> from <a href="https://github.com/Divagation/flock/releases/latest">GitHub Releases</a>. Open it, drag to Applications, done.</p>
+
+          <h3>Build from Source</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-block-titlebar">
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <span class="code-block-label">terminal</span>
+          </div>
+          <pre><span class="prompt">$</span> git clone https://github.com/Divagation/flock.git
+<span class="prompt">$</span> cd flock
+<span class="prompt">$</span> ./build.sh
+<span class="comment"># installs to /Applications/Flock.app</span></pre>
+        </div>
+
+        <div class="prose">
+          <h3>First Launch</h3>
+          <p>Open Flock. It creates a single Claude pane by default. You're in. Press <code>&#8984;T</code> to add more sessions, <code>&#8984;&#8679;T</code> for a plain shell. That's it.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== PANE MANAGEMENT ==================== -->
+      <section class="doc-section reveal" id="panes">
+        <div class="section-label">// core feature</div>
+        <div class="section-title">pane management</div>
+        <div class="section-intro">panes tile themselves. you don't need to think about layouts.</div>
+
+        <div class="prose">
+          <h3>Auto-Layout</h3>
+          <p>Flock automatically arranges panes based on how many you have open. No manual dragging, no guessing.</p>
+        </div>
+
+        <div class="layout-grid">
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr;">
+              <div class="pane"></div>
+            </div>
+            <div class="layout-label">1 pane</div>
+          </div>
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr 1fr;">
+              <div class="pane"></div>
+              <div class="pane"></div>
+            </div>
+            <div class="layout-label">2 panes</div>
+          </div>
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;">
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane" style="grid-column:1/3;"></div>
+            </div>
+            <div class="layout-label">3 panes</div>
+          </div>
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;">
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+            </div>
+            <div class="layout-label">4 panes</div>
+          </div>
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;">
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane" style="visibility:hidden;"></div>
+            </div>
+            <div class="layout-label">5-6 panes</div>
+          </div>
+          <div>
+            <div class="layout-diagram" style="grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;">
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+              <div class="pane"></div>
+            </div>
+            <div class="layout-label">7-9 panes</div>
+          </div>
+        </div>
+
+        <div class="prose">
+          <h3>Manual Splits</h3>
+          <p>Want more control? Split the current pane horizontally with <code>&#8984;D</code> or vertically with <code>&#8984;&#8679;D</code>. This creates a custom split tree that overrides auto-layout.</p>
+
+          <h3>Maximize</h3>
+          <p>Press <code>&#8984;&#8629;</code> to maximize the focused pane to fill the entire window. Press again to restore the grid. Great for focusing on one agent's work.</p>
+
+          <h3>Navigation</h3>
+          <p>Jump between panes with <code>&#8984;1</code> through <code>&#8984;9</code>, or use arrow keys: <code>&#8984;&#8592;</code> <code>&#8984;&#8594;</code> <code>&#8984;&#8593;</code> <code>&#8984;&#8595;</code>.</p>
+
+          <h3>Layout Presets</h3>
+          <p>The command palette (<code>&#8984;K</code>) includes preset layouts: Single Claude, Claude + Shell, 2x2 Grid, and 3-up.</p>
+        </div>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== AGENT MODE ==================== -->
+      <section class="doc-section reveal" id="agent-mode">
+        <div class="section-label">// core feature</div>
+        <div class="section-title">agent mode</div>
+        <div class="section-intro">a built-in task queue with real-time execution monitoring for managing multiple agents.</div>
+
+        <div class="prose">
+          <p>Press <code>&#8984;&#8679;A</code> to toggle agent mode. The terminal grid is replaced with a three-panel view for creating, monitoring, and interacting with agent tasks.</p>
+
+          <h3>The Three-Panel Layout</h3>
+        </div>
+
+        <!-- Agent mode layout diagram -->
+        <div style="margin:1.5rem 0;border:3px solid var(--ink);background:var(--bg-alt);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:160px 1fr 35%;min-height:200px;">
+            <!-- Sidebar panel -->
+            <div style="border-right:1px solid var(--border);padding:10px;background:var(--bg);">
+              <div style="font-family:'Press Start 2P',cursive;font-size:0.22rem;letter-spacing:0.1em;color:var(--accent);margin-bottom:8px;text-transform:uppercase;">+ New Agent</div>
+              <div style="border:1px dashed var(--border);padding:4px 6px;margin-bottom:10px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);">type a task...</div>
+
+              <div style="font-family:'Press Start 2P',cursive;font-size:0.2rem;letter-spacing:0.08em;color:var(--ink-faint);margin-bottom:4px;text-transform:uppercase;">Running</div>
+              <div style="padding:3px 6px;margin-bottom:2px;font-family:'VT323',monospace;font-size:0.78rem;background:var(--bg-warm);border-radius:3px;display:flex;align-items:center;gap:4px;">
+                <span style="width:5px;height:5px;border-radius:50%;background:var(--accent);"></span>refactor auth
+              </div>
+
+              <div style="font-family:'Press Start 2P',cursive;font-size:0.2rem;letter-spacing:0.08em;color:var(--ink-faint);margin:8px 0 4px;text-transform:uppercase;">Queued</div>
+              <div style="padding:3px 6px;margin-bottom:2px;font-family:'VT323',monospace;font-size:0.78rem;display:flex;align-items:center;gap:4px;">
+                <span style="width:5px;height:5px;border-radius:50%;border:1px solid var(--ink-faint);"></span>add search
+              </div>
+              <div style="padding:3px 6px;margin-bottom:2px;font-family:'VT323',monospace;font-size:0.78rem;display:flex;align-items:center;gap:4px;">
+                <span style="width:5px;height:5px;border-radius:50%;border:1px solid var(--ink-faint);"></span>write tests
+              </div>
+
+              <div style="font-family:'Press Start 2P',cursive;font-size:0.2rem;letter-spacing:0.08em;color:var(--ink-faint);margin:8px 0 4px;text-transform:uppercase;">Done</div>
+              <div style="padding:3px 6px;font-family:'VT323',monospace;font-size:0.78rem;display:flex;align-items:center;gap:4px;">
+                <span style="width:5px;height:5px;border-radius:50%;background:var(--green);"></span>fix navbar
+              </div>
+            </div>
+
+            <!-- Conversation panel -->
+            <div style="border-right:1px solid var(--border);padding:10px;display:flex;flex-direction:column;">
+              <div style="font-family:'Silkscreen',cursive;font-size:0.6rem;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+                <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);"></span>refactor auth
+                <span style="font-family:'VT323',monospace;font-size:0.85rem;color:var(--ink-faint);font-weight:400;margin-left:auto;">1m 23s</span>
+              </div>
+              <div style="flex:1;display:flex;flex-direction:column;gap:4px;">
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-soft);">
+                  <span style="font-family:'Menlo',monospace;font-size:9px;font-weight:700;color:var(--ink-faint);border:1px solid var(--ink-faint);width:16px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">...</span>
+                  analyzing project structure
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-soft);">
+                  <span style="font-family:'Menlo',monospace;font-size:9px;font-weight:700;color:var(--blue);border:1px solid var(--blue);width:16px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">R</span>
+                  src/auth/index.ts
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-soft);">
+                  <span style="font-family:'Menlo',monospace;font-size:9px;font-weight:700;color:var(--green);border:1px solid var(--green);width:16px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">E</span>
+                  src/auth/jwt.ts
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink);">
+                  <span style="font-family:'Menlo',monospace;font-size:9px;font-weight:700;color:var(--accent);border:1px solid var(--accent);width:16px;height:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">$</span>
+                  <strong>npm run test</strong>
+                </div>
+              </div>
+              <div style="border-top:1px solid var(--border);padding-top:6px;display:flex;align-items:center;gap:6px;margin-top:4px;">
+                <span style="font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);">4 actions</span>
+                <span style="font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);margin-left:auto;">$0.08</span>
+              </div>
+            </div>
+
+            <!-- Detail panel -->
+            <div style="padding:10px;">
+              <div style="display:flex;gap:0;margin-bottom:8px;">
+                <div style="font-family:'Press Start 2P',cursive;font-size:0.2rem;letter-spacing:0.08em;color:var(--ink);padding:4px 8px;border-bottom:2px solid var(--accent);">PLAN</div>
+                <div style="font-family:'Press Start 2P',cursive;font-size:0.2rem;letter-spacing:0.08em;color:var(--ink-faint);padding:4px 8px;">CHANGES</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);">
+                  <span style="color:var(--ink-faint);">&#10003;</span> Analyzing...
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);">
+                  <span style="color:var(--ink-faint);">&#10003;</span> Read src/auth/index.ts
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink-faint);">
+                  <span style="color:var(--ink-faint);">&#10003;</span> Edit src/auth/jwt.ts
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;font-family:'VT323',monospace;font-size:0.8rem;color:var(--ink);">
+                  <span style="color:var(--blue);">&#8226;</span> <strong>npm run test</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prose">
+          <h3>Sidebar (Left)</h3>
+          <p>The sidebar is a task list grouped by status: <strong>Running</strong>, <strong>Queued</strong>, and <strong>Done</strong>. Click "+ New Agent" to create a task -- type a description and press Enter. That description becomes the prompt sent to Claude Code.</p>
+          <p>Click any task to select it and view its details in the other two panels. Right-click for context actions:</p>
+          <ul>
+            <li><strong>Queued tasks:</strong> Start Now, Delete</li>
+            <li><strong>Running tasks:</strong> Cancel (or Finish if waiting for input)</li>
+            <li><strong>Done/Failed tasks:</strong> Retry, Delete</li>
+          </ul>
+
+          <h3>Conversation Timeline (Center)</h3>
+          <p>A real-time event log of every action the agent takes. As Claude Code works, each tool use and thinking block appears as a row with a colored badge, title, and timestamp. Only one action is "active" at a time, shown with a blue left bar and bold title.</p>
+          <p>When a task finishes but has a session, it enters a "waiting for input" state. A message input field appears at the bottom so you can send follow-up prompts -- Flock resumes the conversation using Claude Code's <code>--resume</code> flag.</p>
+
+          <h3>Detail Panel (Right)</h3>
+          <p>Two tabs:</p>
+          <ul>
+            <li><strong>Plan</strong> -- a checklist of all actions with status indicators (&#10003; done, &#8226; active, &#9675; pending). Consecutive thinking blocks are grouped as "Analyzing..."</li>
+            <li><strong>Changes</strong> -- every file the agent touched, with a badge showing the operation (Read, Edit, Write)</li>
+          </ul>
+        </div>
+
+        <div class="prose">
+          <h3>Automatic Scheduling</h3>
+          <p>You don't manually assign tasks to agents. Flock's runner automatically picks up the next queued task whenever capacity allows, up to <code>maxParallelAgents</code> (default: 3) running concurrently. When one finishes, the next in the queue starts immediately.</p>
+
+          <h3>Event Types</h3>
+          <p>Flock parses Claude Code's stream-json output and maps each event to a badge in the timeline:</p>
+        </div>
+
+        <div class="timeline">
+          <div class="timeline-event">
+            <span class="timeline-badge think">...</span>
+            <span class="timeline-text"><strong>Think</strong> -- agent reasoning</span>
+          </div>
+          <div class="timeline-event">
+            <span class="timeline-badge read">R</span>
+            <span class="timeline-text"><strong>Read</strong> -- reading files</span>
+          </div>
+          <div class="timeline-event">
+            <span class="timeline-badge edit">E</span>
+            <span class="timeline-text"><strong>Edit</strong> -- modifying existing files</span>
+          </div>
+          <div class="timeline-event">
+            <span class="timeline-badge write">W</span>
+            <span class="timeline-text"><strong>Write</strong> -- creating new files</span>
+          </div>
+          <div class="timeline-event">
+            <span class="timeline-badge bash">$</span>
+            <span class="timeline-text"><strong>Bash</strong> -- running shell commands</span>
+          </div>
+          <div class="timeline-event">
+            <span class="timeline-badge search">?</span>
+            <span class="timeline-text"><strong>Search</strong> -- web searches</span>
+          </div>
+        </div>
+
+        <div class="prose">
+          <h3>Stream-JSON Protocol</h3>
+          <p>Under the hood, Flock launches Claude Code with <code>--output-format stream-json</code>. Each line of output is a JSON event (thinking, tool_use, tool_result, result). The <code>StreamJsonParser</code> buffers incoming data, splits on newlines, and emits typed events that become timeline entries.</p>
+
+          <h3>Cost Tracking</h3>
+          <p>Each task accumulates cost across conversation rounds. The total USD cost appears in the conversation footer and in the sidebar subtitle for completed tasks. Enable the usage tracker in Preferences for aggregate stats.</p>
+
+          <h3>Persistence</h3>
+          <p>Tasks are saved to <code>~/Library/Application Support/Flock/tasks.json</code>. They survive app restarts. If Flock quits while a task is running, it's automatically marked as failed on next launch.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== COMMAND PALETTE ==================== -->
+      <section class="doc-section reveal" id="command-palette">
+        <div class="section-label">// core feature</div>
+        <div class="section-title">command palette</div>
+        <div class="section-intro">&#8984;K opens everything. if you've used raycast, you know the vibe.</div>
+
+        <div class="prose">
+          <p>The command palette is the fastest way to do anything in Flock. It supports fuzzy search -- type a few characters and it finds what you want.</p>
+
+          <h3>Available Commands</h3>
+
+          <h4>Panes</h4>
+          <ul>
+            <li>New Claude Pane</li>
+            <li>New Shell Pane</li>
+            <li>Close Pane</li>
+            <li>Rename Tab</li>
+            <li>Split Horizontal / Vertical</li>
+            <li>Focus Pane 1-9</li>
+            <li>Navigate Left / Right / Up / Down</li>
+          </ul>
+
+          <h4>View</h4>
+          <ul>
+            <li>Maximize / Restore</li>
+            <li>Find in Terminal</li>
+            <li>Find in All Panes</li>
+            <li>Toggle Broadcast</li>
+            <li>Toggle Agent Mode</li>
+            <li>Toggle Memory</li>
+            <li>Preferences</li>
+          </ul>
+
+          <h4>Layouts</h4>
+          <ul>
+            <li>Single Claude</li>
+            <li>Claude + Shell</li>
+            <li>2x2 Grid</li>
+            <li>3-up</li>
+          </ul>
+
+          <h4>Appearance</h4>
+          <ul>
+            <li>Switch to any of the 7 built-in themes</li>
+          </ul>
+
+          <h4>Memory</h4>
+          <ul>
+            <li>Toggle Memory sidebar</li>
+            <li>Add Memory entry</li>
+            <li>Clear All Memories</li>
+            <li>Toggle Memory Feature on/off</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== BROADCAST MODE ==================== -->
+      <section class="doc-section reveal" id="broadcast">
+        <div class="section-label">// core feature</div>
+        <div class="section-title">broadcast mode</div>
+        <div class="section-intro">type once, every pane hears it.</div>
+
+        <div class="prose">
+          <p>Press <code>&#8984;&#8679;B</code> to toggle broadcast mode. When active, every keystroke goes to all open panes simultaneously. An orange border around the window indicates broadcast is on.</p>
+
+          <h3>Use Cases</h3>
+          <ul>
+            <li>Give all your Claude agents the same context at once</li>
+            <li>Set up environment variables across all shells</li>
+            <li>Send a shared prompt to multiple sessions</li>
+            <li>Coordinate a team of agents working on related tasks</li>
+          </ul>
+
+          <p>Toggle it on, type your message, toggle it off. Each pane continues independently from there.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== KEYBOARD SHORTCUTS ==================== -->
+      <section class="doc-section reveal" id="shortcuts">
+        <div class="section-label">// reference</div>
+        <div class="section-title">keyboard shortcuts</div>
+        <div class="section-intro">your hands never leave the keys. every action has a shortcut.</div>
+
+        <div class="shortcut-grid">
+          <div class="keycap"><kbd>&#8984;T</kbd><span>new claude</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;T</kbd><span>new shell</span></div>
+          <div class="keycap"><kbd>&#8984;W</kbd><span>close pane</span></div>
+          <div class="keycap"><kbd>&#8984;&#8629;</kbd><span>maximize</span></div>
+          <div class="keycap"><kbd>&#8984;K</kbd><span>palette</span></div>
+          <div class="keycap"><kbd>&#8984;D</kbd><span>split h</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;D</kbd><span>split v</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;A</kbd><span>agents</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;B</kbd><span>broadcast</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;M</kbd><span>memory</span></div>
+          <div class="keycap"><kbd>&#8984;F</kbd><span>find</span></div>
+          <div class="keycap"><kbd>&#8984;&#8679;F</kbd><span>find all</span></div>
+        </div>
+
+        <div class="prose"><h3>Full Reference</h3></div>
+
+        <table class="shortcut-table">
+          <thead>
+            <tr><th>Shortcut</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>&#8984;T</td><td>New Claude pane</td></tr>
+            <tr><td>&#8984;&#8679;T</td><td>New shell pane</td></tr>
+            <tr><td>&#8984;W</td><td>Close current pane</td></tr>
+            <tr><td>&#8984;1 - &#8984;9</td><td>Focus pane 1 through 9</td></tr>
+            <tr><td>&#8984;&#8592; &#8984;&#8594;</td><td>Navigate left / right</td></tr>
+            <tr><td>&#8984;&#8593; &#8984;&#8595;</td><td>Navigate up / down</td></tr>
+            <tr><td>&#8984;&#8629;</td><td>Maximize / restore pane</td></tr>
+            <tr><td>&#8984;D</td><td>Split pane horizontally</td></tr>
+            <tr><td>&#8984;&#8679;D</td><td>Split pane vertically</td></tr>
+            <tr><td>&#8984;K</td><td>Open command palette</td></tr>
+            <tr><td>&#8984;&#8679;A</td><td>Toggle agent mode</td></tr>
+            <tr><td>&#8984;&#8679;B</td><td>Toggle broadcast mode</td></tr>
+            <tr><td>&#8984;&#8679;M</td><td>Toggle memory sidebar</td></tr>
+            <tr><td>&#8984;F</td><td>Find in current pane</td></tr>
+            <tr><td>&#8984;G</td><td>Find next match</td></tr>
+            <tr><td>&#8984;&#8679;G</td><td>Find previous match</td></tr>
+            <tr><td>&#8984;&#8679;F</td><td>Find in all panes</td></tr>
+            <tr><td>&#8984;C</td><td>Copy</td></tr>
+            <tr><td>&#8984;V</td><td>Paste</td></tr>
+            <tr><td>&#8984;A</td><td>Select all</td></tr>
+            <tr><td>&#8984;,</td><td>Preferences</td></tr>
+            <tr><td>&#8984;H</td><td>Hide Flock</td></tr>
+            <tr><td>&#8984;&#8997;H</td><td>Hide others</td></tr>
+            <tr><td>&#8984;Q</td><td>Quit Flock</td></tr>
+            <tr><td>Ctrl+`</td><td>Global hotkey (bring to front)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== THEMES ==================== -->
+      <section class="doc-section reveal" id="themes">
+        <div class="section-label">// reference</div>
+        <div class="section-title">7 built-in themes</div>
+        <div class="section-intro">switch themes from the command palette or preferences. cross-dissolve transition included.</div>
+
+        <div class="theme-grid">
+          <!-- Flock -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#E8E3DA;">
+                <div class="theme-card-accent-dot" style="background:#9B8574;"></div>
+                <div class="theme-card-cursor-line" style="background:#9B8574;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#FAF7F0;">
+                <div class="theme-card-text-line" style="background:#2C2520;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#6A6560;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#6A6560;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#5B9A6B;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Flock</div>
+              <div class="theme-card-desc">warm cream, default</div>
+            </div>
+          </div>
+          <!-- Claude -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#E9E0D1;">
+                <div class="theme-card-accent-dot" style="background:#B5524A;"></div>
+                <div class="theme-card-cursor-line" style="background:#B5524A;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#F8F2E8;">
+                <div class="theme-card-text-line" style="background:#30261E;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#6D6356;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#6D6356;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#B5524A;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Claude</div>
+              <div class="theme-card-desc">parchment + terracotta</div>
+            </div>
+          </div>
+          <!-- Midnight -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#1A1918;">
+                <div class="theme-card-accent-dot" style="background:#6A9FD4;"></div>
+                <div class="theme-card-cursor-line" style="background:#6A9FD4;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#1C1A19;">
+                <div class="theme-card-text-line" style="background:#E8E4DE;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#A09890;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#A09890;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#6A9FD4;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Midnight</div>
+              <div class="theme-card-desc">dark + cool blue</div>
+            </div>
+          </div>
+          <!-- Ember -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#1C1612;">
+                <div class="theme-card-accent-dot" style="background:#C4894A;"></div>
+                <div class="theme-card-cursor-line" style="background:#C4894A;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#1A1410;">
+                <div class="theme-card-text-line" style="background:#E8E0D4;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#A09480;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#A09480;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#C4894A;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Ember</div>
+              <div class="theme-card-desc">charred brown + amber</div>
+            </div>
+          </div>
+          <!-- Vesper -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#181924;">
+                <div class="theme-card-accent-dot" style="background:#9A8DC0;"></div>
+                <div class="theme-card-cursor-line" style="background:#9A8DC0;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#161720;">
+                <div class="theme-card-text-line" style="background:#E0E2EC;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#8E90A8;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#8E90A8;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#9A8DC0;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Vesper</div>
+              <div class="theme-card-desc">deep indigo + lavender</div>
+            </div>
+          </div>
+          <!-- Overcast -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#E2E5EA;">
+                <div class="theme-card-accent-dot" style="background:#5580B5;"></div>
+                <div class="theme-card-cursor-line" style="background:#5580B5;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#F0F2F5;">
+                <div class="theme-card-text-line" style="background:#1E2228;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#555D6A;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#555D6A;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#5580B5;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Overcast</div>
+              <div class="theme-card-desc">cool grey + fog blue</div>
+            </div>
+          </div>
+          <!-- Linen -->
+          <div class="theme-card">
+            <div class="theme-card-preview">
+              <div class="theme-card-chrome" style="background:#F0EEEB;">
+                <div class="theme-card-accent-dot" style="background:#7A8A7A;"></div>
+                <div class="theme-card-cursor-line" style="background:#7A8A7A;"></div>
+              </div>
+              <div class="theme-card-surface" style="background:#FBFAF8;">
+                <div class="theme-card-text-line" style="background:#2C2B28;width:80%;"></div>
+                <div class="theme-card-text-line" style="background:#6A6662;width:55%;"></div>
+                <div class="theme-card-text-line" style="background:#6A6662;width:68%;"></div>
+                <div class="theme-card-text-line" style="background:#7A8A7A;width:40%;"></div>
+              </div>
+            </div>
+            <div class="theme-card-info">
+              <div class="theme-card-name">Linen</div>
+              <div class="theme-card-desc">sunlit + muted green</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="prose">
+          <p>Theme transitions use a cross-dissolve animation. You can also override ANSI terminal colors per-theme in the configuration for full control over syntax highlighting.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== FIND & SEARCH ==================== -->
+      <section class="doc-section reveal" id="find">
+        <div class="section-label">// feature</div>
+        <div class="section-title">find & search</div>
+
+        <div class="feature-row">
+          <div class="info-card">
+            <span class="icon">&#8984;F</span>
+            <h3>find in pane</h3>
+            <p>search the current pane's terminal output. &#8984;G for next match, &#8984;&#8679;G for previous.</p>
+          </div>
+          <div class="info-card">
+            <span class="icon">&#8984;&#8679;F</span>
+            <h3>find in all panes</h3>
+            <p>search across every open pane simultaneously. results highlight in each pane's output.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== SESSION RESTORE ==================== -->
+      <section class="doc-section reveal" id="session-restore">
+        <div class="section-label">// feature</div>
+        <div class="section-title">session restore</div>
+        <div class="section-intro">close the app, open it later, everything's still there.</div>
+
+        <div class="prose">
+          <p>Flock automatically saves your layout and pane arrangement when you quit. On next launch, everything is restored -- pane positions, terminal state, and working directories.</p>
+
+          <h3>Startup Behavior</h3>
+          <p>In Preferences, choose between:</p>
+          <ul>
+            <li><strong>New Claude Pane</strong> -- fresh start every time (default)</li>
+            <li><strong>Restore Last Session</strong> -- pick up right where you left off</li>
+          </ul>
+
+          <p>Session data is stored in <code>~/Library/Application Support/Flock/session.json</code>.</p>
+
+          <h3>Crash Recovery</h3>
+          <p>If Flock quits unexpectedly, any in-progress agent tasks are automatically marked as failed so you know exactly what didn't finish.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== MEMORY SYSTEM ==================== -->
+      <section class="doc-section reveal" id="memory">
+        <div class="section-label">// feature</div>
+        <div class="section-title">memory system</div>
+        <div class="section-intro">persistent context across sessions.</div>
+
+        <div class="prose">
+          <p>Press <code>&#8984;&#8679;M</code> to open the memory sidebar. This is a persistent store of context that carries across sessions -- agent instructions, project notes, anything you want your Claudes to remember.</p>
+
+          <h3>How It Works</h3>
+          <ul>
+            <li>Add memories manually from the sidebar or command palette</li>
+            <li>Memories persist in <code>~/Library/Application Support/Flock/memory.json</code></li>
+            <li>Toggle the entire memory feature on/off in Preferences</li>
+            <li>Clear all memories from the command palette when you want a fresh start</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== NOTIFICATIONS ==================== -->
+      <section class="doc-section reveal" id="notifications">
+        <div class="section-label">// feature</div>
+        <div class="section-title">notifications</div>
+        <div class="section-intro">go get coffee. flock taps you on the shoulder.</div>
+
+        <div class="prose">
+          <p>When an agent finishes a task and Flock isn't in the foreground, you get a native macOS notification. Click it to jump straight to that pane.</p>
+          <p>Notifications respect your macOS notification preferences (Do Not Disturb, etc.). No special setup required.</p>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== GLOBAL HOTKEY ==================== -->
+      <section class="doc-section reveal" id="global-hotkey">
+        <div class="section-label">// feature</div>
+        <div class="section-title">global hotkey</div>
+        <div class="section-intro">summon flock from anywhere.</div>
+
+        <div class="prose">
+          <p>Press <code>Ctrl+`</code> (backtick) from any app to bring Flock to the foreground. Works system-wide, even when Flock is minimized or behind other windows.</p>
+
+          <h3>Customization</h3>
+          <p>In Preferences, you can:</p>
+          <ul>
+            <li>Enable or disable the global hotkey</li>
+            <li>Change the key (default: backtick, key code 50)</li>
+            <li>Change the modifier (default: Control). Options include Ctrl, Cmd, Shift, Option, or combinations.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="dither"></div>
+
+      <!-- ==================== CONFIGURATION ==================== -->
+      <section class="doc-section reveal" id="configuration">
+        <div class="section-label">// config</div>
+        <div class="section-title">configuration</div>
+        <div class="section-intro">open preferences with &#8984;, or from the command palette.</div>
+
+        <table class="config-table">
+          <thead>
+            <tr><th>Setting</th><th>Description</th><th>Default</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>fontSize</td><td>Terminal font size in points</td><td>13</td></tr>
+            <tr><td>defaultPaneType</td><td>New pane type: Claude or Shell</td><td>claude</td></tr>
+            <tr><td>startupBehavior</td><td>New pane or restore last session</td><td>new pane</td></tr>
+            <tr><td>showActivityIndicators</td><td>Show activity dots on tabs</td><td>true</td></tr>
+            <tr><td>themeId</td><td>Active color theme</td><td>flock</td></tr>
+            <tr><td>soundEffectsEnabled</td><td>Audio feedback on events</td><td>false</td></tr>
+            <tr><td>globalHotkeyEnabled</td><td>System-wide hotkey</td><td>true</td></tr>
+            <tr><td>globalHotkeyKeyCode</td><td>Hotkey key code</td><td>50 (`)</td></tr>
+            <tr><td>globalHotkeyModifiers</td><td>Hotkey modifier flags</td><td>control</td></tr>
+            <tr><td>maxParallelAgents</td><td>Max concurrent agent tasks</td><td>3</td></tr>
+            <tr><td>memoryEnabled</td><td>Enable memory persistence</td><td>true</td></tr>
+            <tr><td>showUsageTracker</td><td>Show token/cost tracking</td><td>false</td></tr>
+            <tr><td>autoCheckUpdates</td><td>Check for updates on launch</td><td>true</td></tr>
+          </tbody>
+        </table>
+
+        <div class="prose">
+          <p>All settings are stored in <code>UserDefaults</code> and take effect immediately. Changes broadcast a notification so all components update in sync.</p>
+
+          <h3>Custom ANSI Colors</h3>
+          <p>Each theme defines a 16-color ANSI palette for terminal syntax highlighting. You can override these per-theme for full control over how code looks in your terminals.</p>
+
+          <h3>Data Locations</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-block-titlebar">
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <span class="code-block-label">paths</span>
+          </div>
+          <pre><span class="comment"># Task history &amp; kanban state</span>
+~/Library/Application Support/Flock/tasks.json
+
+<span class="comment"># Session layout for restore</span>
+~/Library/Application Support/Flock/session.json
+
+<span class="comment"># Memory entries</span>
+~/Library/Application Support/Flock/memory.json
+
+<span class="comment"># Preferences</span>
+defaults read com.baa.flock</pre>
+        </div>
+      </section>
+
+      <div class="dither-accent"></div>
+
+      <!-- ==================== BUILDING FROM SOURCE ==================== -->
+      <section class="doc-section reveal" id="building">
+        <div class="section-label">// config</div>
+        <div class="section-title">building from source</div>
+        <div class="section-intro">it's one shell script.</div>
+
+        <div class="prose">
+          <h3>Requirements</h3>
+          <ul>
+            <li>Xcode 15+ (or the Xcode command line tools)</li>
+            <li>Swift 5.9+</li>
+            <li>macOS 13+</li>
+          </ul>
+
+          <h3>Build</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-block-titlebar">
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <span class="code-block-label">terminal</span>
+          </div>
+          <pre><span class="prompt">$</span> git clone https://github.com/Divagation/flock.git
+<span class="prompt">$</span> cd flock
+<span class="prompt">$</span> ./build.sh</pre>
+        </div>
+
+        <div class="prose">
+          <p>The build script compiles the Swift package, bundles the app with its icon and entitlements, and installs to <code>/Applications/Flock.app</code>.</p>
+
+          <h3>Dependencies</h3>
+          <p>Flock has one external dependency:</p>
+          <ul>
+            <li><strong>SwiftTerm</strong> (v1.0.0+) -- terminal emulator engine. Pulled automatically by Swift Package Manager.</li>
+          </ul>
+
+          <h3>Release Build</h3>
+        </div>
+        <div class="code-block">
+          <div class="code-block-titlebar">
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <div class="code-block-dot"></div>
+            <span class="code-block-label">terminal</span>
+          </div>
+          <pre><span class="prompt">$</span> ./release.sh
+<span class="comment"># creates a signed .pkg for distribution</span></pre>
+        </div>
+
+        <div class="prose">
+          <h3>Tech Stack</h3>
+        </div>
+        <div style="margin:1rem 0 2rem;display:flex;flex-wrap:wrap;gap:4px;">
+          <span class="pill">Swift 5.9</span>
+          <span class="pill">AppKit</span>
+          <span class="pill">SwiftTerm</span>
+          <span class="pill">macOS 13+</span>
+          <span class="pill">stream-json</span>
+          <span class="pill">zero web views</span>
+        </div>
+      </section>
+
+    </div><!-- .content-inner -->
+  </main>
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="docs-footer">
+    <div class="footer-landscape"></div>
+    <p style="position:relative;z-index:1;">
+      <a href="index.html">flock</a> &middot; made by <a href="https://github.com/Divagation">brandon anderson</a>
+    </p>
+  </footer>
+
+  <!-- ==================== SCRIPTS ==================== -->
+  <script>
+  (function() {
+    'use strict';
+
+    /* =========================================
+       SIDEBAR — Active section tracking
+       ========================================= */
+    function initSidebarTracking() {
+      var links = document.querySelectorAll('.sidebar-link');
+      var sections = [];
+
+      links.forEach(function(link) {
+        var id = link.getAttribute('href').slice(1);
+        var section = document.getElementById(id);
+        if (section) sections.push({ id: id, el: section, link: link });
+      });
+
+      function update() {
+        var scrollY = window.scrollY + 120;
+
+        var current = null;
+        for (var i = sections.length - 1; i >= 0; i--) {
+          if (sections[i].el.offsetTop <= scrollY) {
+            current = sections[i];
+            break;
+          }
+        }
+
+        links.forEach(function(l) { l.classList.remove('active'); });
+        if (current) current.link.classList.add('active');
+      }
+
+      var ticking = false;
+      window.addEventListener('scroll', function() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(function() {
+          update();
+          ticking = false;
+        });
+      });
+
+      update();
+    }
+
+    /* =========================================
+       KEYCAP — Click interaction
+       ========================================= */
+    function initKeycaps() {
+      document.querySelectorAll('.keycap').forEach(function(keycap) {
+        keycap.addEventListener('click', function() {
+          keycap.classList.add('pressed');
+          keycap.classList.add('flash');
+          setTimeout(function() {
+            keycap.classList.remove('pressed');
+            keycap.classList.remove('flash');
+          }, 200);
+        });
+      });
+    }
+
+    /* =========================================
+       SCROLL REVEAL — IntersectionObserver
+       ========================================= */
+    function initReveals() {
+      var reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reducedMotion) {
+        document.querySelectorAll('.reveal').forEach(function(el) {
+          el.classList.add('visible');
+        });
+        return;
+      }
+
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) entry.target.classList.add('visible');
+        });
+      }, { threshold: 0.08 });
+
+      document.querySelectorAll('.reveal').forEach(function(el) {
+        observer.observe(el);
+      });
+    }
+
+    /* =========================================
+       MOBILE SIDEBAR
+       ========================================= */
+    window.toggleSidebar = function() {
+      var sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('open');
+    };
+
+    // Close sidebar when clicking a link (mobile)
+    document.querySelectorAll('.sidebar-link').forEach(function(link) {
+      link.addEventListener('click', function() {
+        var sidebar = document.getElementById('sidebar');
+        if (sidebar.classList.contains('open')) {
+          sidebar.classList.remove('open');
+        }
+      });
+    });
+
+    /* =========================================
+       INIT
+       ========================================= */
+    document.addEventListener('DOMContentLoaded', function() {
+      initSidebarTracking();
+      initKeycaps();
+      initReveals();
+    });
+
+  })();
+  </script>
+
+</body>
+</html>

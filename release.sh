@@ -162,7 +162,13 @@ VJEOF
 sed -i '' "s/static let current = \"[^\"]*\"/static let current = \"${VERSION}\"/" \
   Sources/Flock/UpdateChecker.swift
 
-echo "version.json updated. Remember to push docs/ to deploy."
+# ─── Push docs/ to deploy auto-updater ───
+echo "Pushing docs/ to GitHub Pages..."
+git add docs/version.json
+git commit -m "Update version.json for v${VERSION}" --allow-empty
+git push origin main
 
 echo ""
 echo "Done. Release live at: https://github.com/${REPO}/releases/tag/v${VERSION}"
+echo ""
+echo "REMINDER: Update localChangelog in Sources/Flock/UpdateChecker.swift with release notes for v${VERSION}"

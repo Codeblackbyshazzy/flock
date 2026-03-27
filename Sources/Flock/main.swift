@@ -51,6 +51,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             hotkeyManager = GlobalHotkeyManager(window: mainWindow)
         }
 
+        // Post-update changelog tab (before update check so it doesn't stack with the alert)
+        let previousVersion = Settings.shared.lastRunVersion
+        if UpdateChecker.shared.detectPostUpdate() {
+            showChangelog(previousVersion: previousVersion)
+        }
+
         // Auto-update check
         UpdateChecker.shared.checkOnLaunchIfNeeded()
 
@@ -80,6 +86,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    // MARK: - Changelog
+
+    private func showChangelog(previousVersion: String?) {
+        let text = UpdateChecker.shared.formattedChangelog(previousVersion: previousVersion)
+        paneManager.addPane(type: .shell)
+        guard let pane = paneManager.panes.last else { return }
+        pane.customName = "What's New"
+
+        // Write to temp file to avoid shell escaping issues, then display
+        let tmpPath = NSTemporaryDirectory() + "flock-changelog-\(ProcessInfo.processInfo.processIdentifier).txt"
+        try? text.write(toFile: tmpPath, atomically: true, encoding: .utf8)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            pane.sendText("clear && cat '\(tmpPath)' && rm -f '\(tmpPath)'\n")
+        }
+
+        // Switch focus back to the first (main) tab, changelog tab stays in background
+        if paneManager.panes.count > 1 {
+            paneManager.focusPane(at: 0)
+        }
+    }
 
     // MARK: - Menu actions
 
@@ -139,6 +167,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func toggleMemory(_ sender: Any?) {
         memorySidebar.toggle(in: mainWindow)
+    }
+
+    @objc func toggleChangeLog(_ sender: Any?) {
+        let idx = paneManager.activePaneIndex
+        guard idx >= 0, idx < paneManager.panes.count else { return }
+        paneManager.panes[idx].toggleChangeLog()
     }
 
     @objc func checkForUpdates(_ sender: Any?) {
@@ -201,6 +235,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
             key: "a", mods: [.command, .shift], target: target)
     addItem(viewMenu, "Toggle Memory", #selector(AppDelegate.toggleMemory(_:)),
             key: "m", mods: [.command, .shift], target: target)
+    addItem(viewMenu, "Toggle Change Log", #selector(AppDelegate.toggleChangeLog(_:)),
+            key: "l", mods: [.command, .shift], target: target)
 
     // -- Pane menu --
     let paneItem = NSMenuItem(); main.addItem(paneItem)
