@@ -21,6 +21,13 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.0", date: "2026-03-27", changes: [
+            "Theme swatches -- color chip picker replaces segmented control",
+            "Ember and Vesper dark themes",
+            "Memory context now syncs on every change (was write-once)",
+            "Change log overlay for Claude panes (Cmd+Shift+L)",
+            "Post-update changelog display",
+        ]),
         ChangelogEntry(version: "0.8.0", date: "2026-03-15", changes: [
             "Agent mode with parallel task execution",
             "Memory system for persistent context across sessions",
