@@ -36,7 +36,7 @@ struct ColorTheme {
 // MARK: - Built-in Themes
 
 enum Themes {
-    static let all: [ColorTheme] = [flock, claude, midnight, overcast, linen]
+    static let all: [ColorTheme] = [flock, claude, midnight, ember, vesper, overcast, linen]
 
     // The original warm cream
     static let flock = ColorTheme(
@@ -107,6 +107,54 @@ enum Themes {
             0x6A9FD4, 0xA87EC4, 0x72B8CC, 0xE8E4DE,
             0x635C55, 0xE08A84, 0x85CC8A, 0xDCC86E,
             0x85B3D9, 0xBFA0D4, 0x8FC5D9, 0xE8E4DE,
+        ]
+    )
+
+    // Smoldering warmth -- charred brown, amber accent
+    static let ember = ColorTheme(
+        id: "ember", name: "Ember",
+        chrome:        NSColor(hex: 0x1C1612),
+        surface:       NSColor(hex: 0x28201A),
+        hover:         NSColor(hex: 0x382E26),
+        divider:       NSColor(hex: 0x302822),
+        borderRest:    NSColor(hex: 0x423830),
+        borderFocus:   NSColor(hex: 0x625448),
+        accent:        NSColor(hex: 0xC4894A),
+        accentSubtle:  NSColor(hex: 0xC4894A, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0xE8E0D4),
+        textSecondary: NSColor(hex: 0xA09480),
+        textTertiary:  NSColor(hex: 0x706454),
+        terminalBg:    NSColor(hex: 0x1A1410),
+        terminalFg:    NSColor(hex: 0xE8E0D4),
+        ansiHex: [
+            0x1C1612, 0xD47058, 0x7AAE60, 0xD4A848,
+            0x7A90B5, 0xC07870, 0x72A8A0, 0xE8E0D4,
+            0x685C4E, 0xE09078, 0x92C478, 0xDCBC60,
+            0x94A8C4, 0xD49890, 0x8CC0B8, 0xF2ECE2,
+        ]
+    )
+
+    // Evening twilight -- deep indigo, dusty lavender accent
+    static let vesper = ColorTheme(
+        id: "vesper", name: "Vesper",
+        chrome:        NSColor(hex: 0x181924),
+        surface:       NSColor(hex: 0x22242E),
+        hover:         NSColor(hex: 0x2E3040),
+        divider:       NSColor(hex: 0x282A38),
+        borderRest:    NSColor(hex: 0x38394E),
+        borderFocus:   NSColor(hex: 0x525570),
+        accent:        NSColor(hex: 0x9A8DC0),
+        accentSubtle:  NSColor(hex: 0x9A8DC0, alpha: 0x26),
+        textPrimary:   NSColor(hex: 0xE0E2EC),
+        textSecondary: NSColor(hex: 0x8E90A8),
+        textTertiary:  NSColor(hex: 0x62647A),
+        terminalBg:    NSColor(hex: 0x161720),
+        terminalFg:    NSColor(hex: 0xE0E2EC),
+        ansiHex: [
+            0x181924, 0xCC6578, 0x68A878, 0xC8B050,
+            0x6A88C8, 0xAE7EC0, 0x60A4B8, 0xE0E2EC,
+            0x585A78, 0xE08898, 0x80C090, 0xD8C468,
+            0x88A4D8, 0xC498D0, 0x80BCD0, 0xECEDF4,
         ]
     )
 
