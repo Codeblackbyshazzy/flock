@@ -8,7 +8,7 @@
 
 [divagation.github.io/flock](https://divagation.github.io/flock/)
 
-flock is a tiny, beautiful macOS app that lets you run as many Claude Code sessions as you want, all at once, all in one window. watch them think, read, edit, and build in real time. it's like having a team of programmers that never sleeps.
+flock is a tiny, beautiful macOS app that lets you run as many Claude Code sessions as you want, all at once, all in one window. it also gives you shell panes and editable markdown panes alongside them. watch them think, read, edit, and build in real time. it's like having a team of programmers that never sleeps.
 
 you open flock. you press `⌘T` a few times. suddenly four claudes are working on four different things and you're just... watching. it's kind of mesmerizing honestly.
 
@@ -31,17 +31,21 @@ or grab the `.zip` from [releases](https://github.com/Divagation/flock/releases)
 
 🤖 **agent mode.** this is the fun one. hit `⌘⇧A` and flock becomes a task manager. throw tasks at it, watch them flow across a kanban board (backlog → in progress → done). each agent gets a live timeline showing every file it reads, every edit it makes, every command it runs.
 
-⌨️ **command palette.** `⌘K` opens everything. new panes, themes, layouts, broadcast mode. if you've used raycast or arc you already know how this works.
+⌨️ **command palette.** `⌘K` opens everything. new panes, markdown files, themes, layouts, broadcast mode. if you've used raycast or arc you already know how this works.
 
 📡 **broadcast mode.** type once, every pane hears it. useful for when you want all your claudes to know something at the same time.
 
-🔍 **find everywhere.** search inside one pane or across all of them at once.
+🔍 **find everywhere.** search inside terminal panes or run a global search across every pane, including markdown.
+
+📝 **markdown panes.** open or create markdown files from the command palette, edit them directly in flock, and let them autosave back to disk.
 
 💾 **session restore.** close the app, open it later, everything's still there.
 
 🎨 **themes.** because life's too short for one color scheme.
 
 🔔 **notifications.** flock taps you on the shoulder when an agent finishes something.
+
+🗜️ **wren compression.** toggle on prompt compression and flock runs your messages through [wren](https://github.com/Divagation/wren) before sending, saving tokens automatically. works on paste in terminal mode and message input in agent mode.
 
 <br>
 
@@ -62,7 +66,7 @@ flock is keyboard-first. your hands never leave the keys.
 | `⌘K` | command palette |
 | `⌘⇧A` | agent mode |
 | `⌘⇧B` | broadcast mode |
-| `⌘F` | find in pane |
+| `⌘F` | find in terminal pane |
 | `⌘⇧F` | find in all panes |
 
 <br>
@@ -83,7 +87,7 @@ that's it. app goes to `/Applications`, cli goes to `flock`.
 
 ## under the hood
 
-native swift. no electron. each pane is a real terminal powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm). agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. it's fast because it's not pretending to be a website.
+native swift. no electron. terminal panes are powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), and markdown panes are native editable text views that autosave to disk. agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. it's fast because it's not pretending to be a website.
 
 <br>
 

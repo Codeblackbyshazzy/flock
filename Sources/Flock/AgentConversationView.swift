@@ -286,9 +286,13 @@ final class AgentConversationView: NSView, NSTextFieldDelegate {
 
     @objc private func messageFieldAction(_ sender: NSTextField) {
         let text = sender.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, let task = task else { return }
-        AgentRunner.shared.sendMessage(to: task, text: text)
+        guard !text.isEmpty, task != nil else { return }
         sender.stringValue = ""
+
+        WrenCompressor.shared.compress(text) { [weak self] compressed, _ in
+            guard let self, let task = self.task else { return }
+            AgentRunner.shared.sendMessage(to: task, text: compressed)
+        }
     }
 
     func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {

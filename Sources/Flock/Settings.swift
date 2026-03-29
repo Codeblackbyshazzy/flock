@@ -26,6 +26,7 @@ class Settings {
         case showUsageTracker
         case autoCheckUpdates
         case lastRunVersion
+        case wrenCompressionEnabled
     }
 
     var themeId: String {
@@ -123,6 +124,11 @@ class Settings {
     var lastRunVersion: String? {
         get { defaults.string(forKey: Key.lastRunVersion.rawValue) }
         set { defaults.set(newValue, forKey: Key.lastRunVersion.rawValue) }
+    }
+
+    var wrenCompressionEnabled: Bool {
+        get { defaults.bool(forKey: Key.wrenCompressionEnabled.rawValue) }
+        set { defaults.set(newValue, forKey: Key.wrenCompressionEnabled.rawValue); post(.wrenCompressionEnabled) }
     }
 
     // ANSI color overrides per theme

@@ -14,6 +14,7 @@ class PreferencesView: NSView {
     private let activitySwitch = NSSwitch()
     private let soundSwitch = NSSwitch()
     private let memorySwitch = NSSwitch()
+    private let wrenSwitch = NSSwitch()
     private let usageSwitch = NSSwitch()
     private let updateSwitch = NSSwitch()
     private let doneButton = NSButton(title: "Done", target: nil, action: nil)
@@ -21,7 +22,7 @@ class PreferencesView: NSView {
     // MARK: - Layout Constants
 
     private let panelWidth: CGFloat = 480
-    private let panelHeight: CGFloat = 544
+    private let panelHeight: CGFloat = 576
     private let labelX: CGFloat = 24
     private let controlX: CGFloat = 160
     private let controlWidth: CGFloat = 200
@@ -33,7 +34,7 @@ class PreferencesView: NSView {
 
     static func show(on window: NSWindow) {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 544),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 576),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: true
@@ -42,7 +43,7 @@ class PreferencesView: NSView {
         panel.isFloatingPanel = false
         panel.becomesKeyOnlyIfNeeded = false
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 544))
+        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 576))
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
@@ -271,6 +272,24 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // Wren Compression
+
+        addLabel("Wren Compression", y: y)
+
+        wrenSwitch.state = settings.wrenCompressionEnabled ? .on : .off
+        wrenSwitch.target = self
+        wrenSwitch.action = #selector(wrenChanged(_:))
+        wrenSwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(wrenSwitch)
+
+        let wrenHint = NSTextField(labelWithString: "Compress prompts before sending to save tokens")
+        wrenHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        wrenHint.textColor = Theme.textTertiary
+        wrenHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 240, height: 14)
+        addSubview(wrenHint)
+
+        y += rowHeight
+
         // ── Done Button ──
         let btnWidth: CGFloat = 72
         let btnHeight: CGFloat = 28
@@ -377,6 +396,10 @@ class PreferencesView: NSView {
 
     @objc private func memoryChanged(_ sender: NSSwitch) {
         Settings.shared.memoryEnabled = (sender.state == .on)
+    }
+
+    @objc private func wrenChanged(_ sender: NSSwitch) {
+        Settings.shared.wrenCompressionEnabled = (sender.state == .on)
     }
 
     @objc private func done(_ sender: Any) {

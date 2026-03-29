@@ -19,6 +19,21 @@ class FlockTerminalView: LocalProcessTerminalView {
         }
     }
 
+    // Wren compression on paste (Claude panes only)
+    override func paste(_ sender: Any?) {
+        guard Settings.shared.wrenCompressionEnabled,
+              owningPane?.paneType == .claude,
+              let text = NSPasteboard.general.string(forType: .string),
+              text.count >= 300 else {
+            super.paste(sender as Any)
+            return
+        }
+
+        WrenCompressor.shared.compress(text) { [weak self] compressed, _ in
+            self?.send(txt: compressed)
+        }
+    }
+
     // Broadcast input: when typing in one pane, send to all others
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
         super.send(source: source, data: data)

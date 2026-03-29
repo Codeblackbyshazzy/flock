@@ -21,6 +21,10 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.1", date: "2026-03-29", changes: [
+            "Wren prompt compression -- toggle in Preferences to compress messages before sending, saving tokens automatically",
+            "Works on paste in terminal panes and message input in agent mode",
+        ]),
         ChangelogEntry(version: "0.9.0", date: "2026-03-27", changes: [
             "Theme swatches -- color chip picker replaces segmented control",
             "Ember and Vesper dark themes",
@@ -190,5 +194,5 @@ final class UpdateChecker {
 
 // Fallback version constant (used when not running as .app bundle)
 enum FlockVersion {
-    static let current = "0.9.0"
+    static let current = "0.9.1"
 }
