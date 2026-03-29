@@ -69,7 +69,7 @@ class GlobalFindView {
         isVisible = false
 
         // Clear searches on all panes
-        paneManager?.panes.forEach { $0.terminalView.clearSearch() }
+        paneManager?.panes.forEach { ($0 as? TerminalPane)?.terminalView.clearSearch() }
 
         let backdrop = self.backdropView
         let panel = self.panel
@@ -104,7 +104,7 @@ class GlobalFindPanel: NSView, NSTextFieldDelegate {
     var onDismiss: (() -> Void)?
 
     struct PaneMatch {
-        let pane: TerminalPane
+        let pane: FlockPane
         let paneIndex: Int
         let name: String
         let hasMatch: Bool
@@ -177,8 +177,7 @@ class GlobalFindPanel: NSView, NSTextFieldDelegate {
     private func performSearch(_ term: String) {
         guard let mgr = paneManager else { return }
 
-        // Clear previous searches
-        mgr.panes.forEach { $0.terminalView.clearSearch() }
+        mgr.panes.forEach { ($0 as? TerminalPane)?.terminalView.clearSearch() }
 
         if term.isEmpty {
             updateAllPanes(term: "")
@@ -187,8 +186,12 @@ class GlobalFindPanel: NSView, NSTextFieldDelegate {
 
         var results: [PaneMatch] = []
         for (i, pane) in mgr.panes.enumerated() {
-            let found = pane.terminalView.findNext(term) ?? false
-            let name = pane.customName ?? pane.processTitle ?? pane.type.label
+            let found = if let terminalPane = pane as? TerminalPane {
+                terminalPane.terminalView.findNext(term)
+            } else {
+                pane.matchesSearchTerm(term)
+            }
+            let name = pane.customName ?? pane.processTitle ?? pane.paneType.label
             results.append(PaneMatch(pane: pane, paneIndex: i, name: name, hasMatch: found))
         }
 
@@ -202,7 +205,7 @@ class GlobalFindPanel: NSView, NSTextFieldDelegate {
     private func updateAllPanes(term: String) {
         guard let mgr = paneManager else { return }
         matches = mgr.panes.enumerated().map { (i, pane) in
-            let name = pane.customName ?? pane.processTitle ?? pane.type.label
+            let name = pane.customName ?? pane.processTitle ?? pane.paneType.label
             return PaneMatch(pane: pane, paneIndex: i, name: name, hasMatch: false)
         }
         resultsView.results = matches
@@ -229,7 +232,7 @@ class GlobalFindPanel: NSView, NSTextFieldDelegate {
 
 private class GlobalFindResultsView: NSView {
     struct PaneMatch {
-        let pane: TerminalPane
+        let pane: FlockPane
         let paneIndex: Int
         let name: String
         let hasMatch: Bool
@@ -280,7 +283,7 @@ private class GlobalFindResultsView: NSView {
             }
 
             // Pane type icon
-            let iconName = result.pane.type == .claude ? "brain" : "terminal"
+            let iconName = result.pane.paneType == .claude ? "brain" : (result.pane.paneType == .markdown ? "doc.text" : "terminal")
             let iconColor = result.hasMatch ? Theme.accent : Theme.textTertiary
             if let img = NSImage(systemSymbolName: iconName, accessibilityDescription: nil) {
                 let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)

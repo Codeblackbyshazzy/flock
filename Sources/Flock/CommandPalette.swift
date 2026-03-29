@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 // MARK: - Command Action
 
@@ -129,6 +130,12 @@ class CommandPalette {
             CommandAction(name: "New Shell Pane", shortcut: "⌘⇧T", category: "Panes") { [weak self] in
                 self?.paneManager?.addPane(type: .shell)
             },
+            CommandAction(name: "New Markdown File", shortcut: "", category: "Files") { [weak self] in
+                self?.createMarkdownFile()
+            },
+            CommandAction(name: "Open Markdown File", shortcut: "", category: "Files") { [weak self] in
+                self?.openMarkdownPicker()
+            },
             CommandAction(name: "Close Pane", shortcut: "⌘W", category: "Panes") { [weak self] in
                 self?.paneManager?.closeActivePane()
             },
@@ -193,7 +200,7 @@ class CommandPalette {
                 guard let mgr = self?.paneManager else { return }
                 let idx = mgr.activePaneIndex
                 guard idx >= 0, idx < mgr.panes.count else { return }
-                mgr.panes[idx].toggleChangeLog()
+                (mgr.panes[idx] as? TerminalPane)?.toggleChangeLog()
             },
             CommandAction(name: "Toggle Memory", shortcut: "⌘⇧M", category: "View") { [weak self] in
                 guard let win = self?.window else { return }
@@ -236,6 +243,57 @@ class CommandPalette {
         // Add preset panes
         for paneType in preset.panes {
             pm.addPane(type: paneType)
+        }
+    }
+
+    private func openMarkdownPicker() {
+        guard let window = window else { return }
+
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [
+            .plainText,
+            UTType(filenameExtension: "md"),
+            UTType(filenameExtension: "markdown"),
+            UTType(filenameExtension: "mdown"),
+            UTType(filenameExtension: "mkd"),
+        ].compactMap { $0 }
+        panel.message = "Choose a markdown file to open in a pane."
+
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+            self?.paneManager?.openMarkdownFile(url.path)
+        }
+    }
+
+    private func createMarkdownFile() {
+        guard let window = window else { return }
+
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "Untitled.md"
+        panel.canCreateDirectories = true
+        panel.allowedContentTypes = [
+            UTType(filenameExtension: "md"),
+            UTType(filenameExtension: "markdown"),
+        ].compactMap { $0 }
+        panel.message = "Choose where to create the new markdown file."
+
+        panel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = panel.url else { return }
+
+            let starter = "# Untitled\n\n"
+            do {
+                try starter.write(to: url, atomically: true, encoding: .utf8)
+                self?.paneManager?.openMarkdownFile(url.path)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Couldn’t Create Markdown File"
+                alert.informativeText = error.localizedDescription
+                alert.alertStyle = .warning
+                alert.beginSheetModal(for: window)
+            }
         }
     }
 }

@@ -240,13 +240,13 @@ class TabBarView: NSView, NSTextFieldDelegate {
         // Show the focused pane's name if it's in this node, else first leaf
         let leaves = node.allLeaves
         let mgr = paneManager
-        let activePaneInNode: TerminalPane? = {
+        let activePaneInNode: FlockPane? = {
             guard let mgr = mgr, mgr.activePaneIndex >= 0, mgr.activePaneIndex < mgr.panes.count else { return nil }
             let active = mgr.panes[mgr.activePaneIndex]
             return leaves.contains(where: { $0 === active }) ? active : nil
         }()
         let pane = activePaneInNode ?? leaves.first
-        let name = pane?.customName ?? pane?.processTitle ?? pane?.type.label ?? "pane"
+        let name = pane?.customName ?? pane?.processTitle ?? pane?.paneType.label ?? "pane"
         let suffix = node.leafCount > 1 ? " (\(node.leafCount))" : ""
         return "\(index + 1)  \(name)\(suffix)"
     }
@@ -570,7 +570,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         let rect = frames[tabIndex].insetBy(dx: 4, dy: 3)
 
         let field = NSTextField(frame: rect)
-        field.stringValue = pane.customName ?? pane.type.label
+        field.stringValue = pane.customName ?? pane.paneType.label
         field.font = Theme.Typo.tabActive
         field.textColor = Theme.textPrimary
         field.backgroundColor = Theme.surface

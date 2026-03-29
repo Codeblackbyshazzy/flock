@@ -156,7 +156,7 @@ class GridContainer: NSView {
         }
     }
 
-    private func applyFrames(_ frames: [(TerminalPane, NSRect)], animated: Bool) {
+    private func applyFrames(_ frames: [(FlockPane, NSRect)], animated: Bool) {
         for (pane, frame) in frames {
             if animated {
                 NSAnimationContext.runAnimationGroup { ctx in

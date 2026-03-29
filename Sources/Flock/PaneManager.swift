@@ -1,11 +1,12 @@
 import AppKit
 
 enum PaneType {
-    case claude, shell
+    case claude, shell, markdown
     var label: String {
         switch self {
         case .claude: return "claude"
         case .shell:  return "shell"
+        case .markdown: return "markdown"
         }
     }
 }
@@ -15,7 +16,7 @@ enum Direction { case left, right, up, down }
 class PaneManager {
     static let agentModeDidChange = Notification.Name("FlockAgentModeDidChange")
 
-    private(set) var panes: [TerminalPane] = []
+    private(set) var panes: [FlockPane] = []
     private(set) var activePaneIndex: Int = -1
     private(set) var isMaximized: Bool = false
 
@@ -40,6 +41,10 @@ class PaneManager {
     // MARK: - Pane lifecycle
 
     func addPane(type: PaneType, workingDirectory: String? = nil) {
+        guard type != .markdown else {
+            assertionFailure("Use openMarkdownFile(_:) to create markdown panes.")
+            return
+        }
         let pane = TerminalPane(type: type, manager: self, workingDirectory: workingDirectory)
         panes.append(pane)
         tabNodes.append(SplitNode(pane: pane))
@@ -74,7 +79,8 @@ class PaneManager {
         } else {
             activePaneIndex = min(max(0, index <= activePaneIndex ? activePaneIndex - 1 : activePaneIndex), panes.count - 1)
             panes[activePaneIndex].isFocused = true
-            panes[activePaneIndex].terminalView.window?.makeFirstResponder(panes[activePaneIndex].terminalView)
+            let responder = panes[activePaneIndex].firstResponderView
+            responder.window?.makeFirstResponder(responder)
         }
         isMaximized = false
 
@@ -108,7 +114,8 @@ class PaneManager {
         } else {
             activePaneIndex = max(0, min(activePaneIndex, panes.count - 1))
             panes[activePaneIndex].isFocused = true
-            panes[activePaneIndex].terminalView.window?.makeFirstResponder(panes[activePaneIndex].terminalView)
+            let responder = panes[activePaneIndex].firstResponderView
+            responder.window?.makeFirstResponder(responder)
         }
         isMaximized = false
         layoutAndUpdate(animated: true)
@@ -121,7 +128,8 @@ class PaneManager {
         }
         activePaneIndex = index
         panes[index].isFocused = true
-        panes[index].terminalView.window?.makeFirstResponder(panes[index].terminalView)
+        let responder = panes[index].firstResponderView
+        responder.window?.makeFirstResponder(responder)
         closeFindBar()
         tabBar?.update()
         statusBar?.update()
@@ -152,7 +160,7 @@ class PaneManager {
     }
 
     // Tab index for a given pane
-    func tabIndex(for pane: TerminalPane) -> Int? {
+    func tabIndex(for pane: FlockPane) -> Int? {
         tabNodes.firstIndex(where: { $0.findLeaf(containing: pane) != nil })
     }
 
@@ -202,8 +210,8 @@ class PaneManager {
         isAgentMode.toggle()
 
         // Cross-fade transition
-        let incoming: NSView? = isAgentMode ? agentModeView : (gridContainer as? NSView)
-        let outgoing: NSView? = isAgentMode ? (gridContainer as? NSView) : agentModeView
+        let incoming: NSView? = isAgentMode ? agentModeView : gridContainer
+        let outgoing: NSView? = isAgentMode ? gridContainer : agentModeView
 
         incoming?.alphaValue = 0
         incoming?.isHidden = false
@@ -258,12 +266,25 @@ class PaneManager {
 
     // MARK: - Session Save/Restore
 
+    func openMarkdownFile(_ path: String) {
+        let pane = MarkdownPane(filePath: path, manager: self)
+        panes.append(pane)
+        tabNodes.append(SplitNode(pane: pane))
+        gridContainer?.addSubview(pane)
+        focusPane(at: panes.count - 1)
+        layoutAndUpdate(animated: true)
+        pane.animateEntrance()
+    }
+
     func saveSession() {
-        let sessionPanes = panes.map { pane in
-            (type: pane.type == .claude ? "claude" : "shell",
-             directory: pane.currentDirectory,
-             name: pane.customName,
-             sessionId: pane.type == .claude ? "resume" : nil)
+        let sessionPanes: [(type: String, directory: String?, name: String?, sessionId: String?)] = panes.map { pane in
+            if let mp = pane as? MarkdownPane {
+                return (type: "markdown", directory: mp.filePath, name: mp.customName, sessionId: nil)
+            }
+            return (type: pane.paneType == .claude ? "claude" : "shell",
+                    directory: pane.currentDirectory,
+                    name: pane.customName,
+                    sessionId: pane.paneType == .claude ? "resume" : nil)
         }
         SessionRestore.save(panes: sessionPanes, activeIndex: activePaneIndex)
     }
@@ -271,15 +292,23 @@ class PaneManager {
     func restoreSession() {
         guard let layout = SessionRestore.restore() else { return }
         for sp in layout.panes {
-            let type: PaneType = sp.type == "shell" ? .shell : .claude
-            let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
-            pane.customName = sp.customName
-            if type == .claude, sp.sessionId != nil {
-                pane.shouldResume = true
+            if sp.type == "markdown", let path = sp.workingDirectory {
+                let pane = MarkdownPane(filePath: path, manager: self)
+                pane.customName = sp.customName
+                panes.append(pane)
+                tabNodes.append(SplitNode(pane: pane))
+                gridContainer?.addSubview(pane)
+            } else {
+                let type: PaneType = sp.type == "shell" ? .shell : .claude
+                let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
+                pane.customName = sp.customName
+                if type == .claude, sp.sessionId != nil {
+                    pane.shouldResume = true
+                }
+                panes.append(pane)
+                tabNodes.append(SplitNode(pane: pane))
+                gridContainer?.addSubview(pane)
             }
-            panes.append(pane)
-            tabNodes.append(SplitNode(pane: pane))
-            gridContainer?.addSubview(pane)
         }
         if layout.activeIndex >= 0, layout.activeIndex < panes.count {
             focusPane(at: layout.activeIndex)
@@ -335,13 +364,12 @@ class PaneManager {
     // MARK: - Find
 
     func showFindBar() {
-        guard activePaneIndex >= 0, activePaneIndex < panes.count else { return }
+        guard activePaneIndex >= 0, activePaneIndex < panes.count,
+              let pane = panes[activePaneIndex] as? TerminalPane else { return }
         if findBar != nil { closeFindBar() }
 
-        let pane = panes[activePaneIndex]
         let bar = FindBarView(terminalView: pane.terminalView)
         pane.addSubview(bar)
-        // FindBarView positions itself in viewDidMoveToSuperview (right-aligned pill)
         bar.show()
         findBar = bar
     }

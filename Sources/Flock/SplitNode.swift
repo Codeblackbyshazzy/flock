@@ -7,7 +7,7 @@ enum SplitDirection {
 
 class SplitNode {
     enum Content {
-        case leaf(TerminalPane)
+        case leaf(FlockPane)
         case split(direction: SplitDirection, first: SplitNode, second: SplitNode)
     }
 
@@ -15,7 +15,7 @@ class SplitNode {
     var ratio: CGFloat = 0.5  // split position (0.0-1.0)
     weak var parent: SplitNode?
 
-    init(pane: TerminalPane) {
+    init(pane: FlockPane) {
         self.content = .leaf(pane)
     }
 
@@ -26,7 +26,7 @@ class SplitNode {
     }
 
     // Get all leaf panes in this tree
-    var allLeaves: [TerminalPane] {
+    var allLeaves: [FlockPane] {
         switch content {
         case .leaf(let pane): return [pane]
         case .split(_, let first, let second): return first.allLeaves + second.allLeaves
@@ -34,7 +34,7 @@ class SplitNode {
     }
 
     // Find the leaf node containing a specific pane
-    func findLeaf(containing pane: TerminalPane) -> SplitNode? {
+    func findLeaf(containing pane: FlockPane) -> SplitNode? {
         switch content {
         case .leaf(let p): return p === pane ? self : nil
         case .split(_, let first, let second):
@@ -43,7 +43,7 @@ class SplitNode {
     }
 
     // Calculate frames for all leaves given a bounding rect
-    func layoutFrames(in rect: NSRect, gap: CGFloat) -> [(TerminalPane, NSRect)] {
+    func layoutFrames(in rect: NSRect, gap: CGFloat) -> [(FlockPane, NSRect)] {
         switch content {
         case .leaf(let pane):
             return [(pane, rect)]
@@ -71,7 +71,7 @@ class SplitNode {
     }
 
     // Split this leaf node into two panes
-    func split(direction: SplitDirection, newPane: TerminalPane) {
+    func split(direction: SplitDirection, newPane: FlockPane) {
         guard case .leaf(let existingPane) = content else { return }
         let firstChild = SplitNode(pane: existingPane)
         let secondChild = SplitNode(pane: newPane)
@@ -81,7 +81,7 @@ class SplitNode {
     }
 
     // Remove a pane from a split, promoting the sibling
-    func removePaneAndPromoteSibling(pane: TerminalPane) -> Bool {
+    func removePaneAndPromoteSibling(pane: FlockPane) -> Bool {
         guard case .split(_, let first, let second) = content else { return false }
 
         // Check if a direct child leaf matches
