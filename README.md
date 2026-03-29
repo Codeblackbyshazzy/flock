@@ -16,36 +16,71 @@ you open flock. you press `⌘T` a few times. suddenly four claudes are working 
 
 ## get it
 
-```bash
-brew tap divagation/flock
-brew install --cask flockapp
-```
-
-or grab the `.zip` from [releases](https://github.com/Divagation/flock/releases) and drag it into Applications. done.
+grab the `.pkg` installer or `.zip` from [releases](https://github.com/Divagation/flock/releases) and you're done.
 
 <br>
 
 ## what you get
 
-🪟 **panes that just work.** they tile themselves. 1 pane fills the screen, 2 panes split in half, 4 make a grid. it figures it out. split horizontal, split vertical, maximize one, whatever you want.
+### panes
 
-🤖 **agent mode.** this is the fun one. hit `⌘⇧A` and flock becomes a task manager. throw tasks at it, watch them flow across a kanban board (backlog → in progress → done). each agent gets a live timeline showing every file it reads, every edit it makes, every command it runs.
+flock has three kinds of panes. they tile themselves automatically -- 1 fills the screen, 2 split in half, 4 make a grid. split horizontal, split vertical, maximize one, whatever you want. it figures it out.
 
-⌨️ **command palette.** `⌘K` opens everything. new panes, markdown files, themes, layouts, broadcast mode. if you've used raycast or arc you already know how this works.
+- **claude panes** run full Claude Code sessions with real-time activity detection, state indicators (thinking, working, waiting, idle), and a change log overlay (`⌘⇧L`) showing every file read, edit, and command.
+- **shell panes** are regular terminals with autosuggestions baked in.
+- **markdown panes** let you open or create `.md` files, edit them directly, and autosave back to disk. external changes are detected and you get a clean conflict resolution dialog.
 
-📡 **broadcast mode.** type once, every pane hears it. useful for when you want all your claudes to know something at the same time.
+### agent mode
 
-🔍 **find everywhere.** search inside terminal panes or run a global search across every pane, including markdown.
+hit `⌘⇧A` and flock becomes a task manager. throw tasks at a queue, watch them flow across a kanban board (backlog, in progress, done, failed). each agent gets a live timeline showing every action in real time. run up to 3 agents in parallel (configurable). tasks persist across sessions. costs are tracked per task.
 
-📝 **markdown panes.** open or create markdown files from the command palette, edit them directly in flock, and let them autosave back to disk.
+you can send follow-up messages to running agents, resume completed conversations, or cancel anything mid-flight.
 
-💾 **session restore.** close the app, open it later, everything's still there.
+### command palette
 
-🎨 **themes.** because life's too short for one color scheme.
+`⌘K` opens everything. new panes, markdown files, themes, layouts, broadcast mode, memory management, pane navigation. fuzzy search, keyboard-driven. if you've used raycast or arc you already know how this works.
 
-🔔 **notifications.** flock taps you on the shoulder when an agent finishes something.
+### broadcast mode
 
-🗜️ **wren compression.** toggle on prompt compression and flock runs your messages through [wren](https://github.com/Divagation/wren) before sending, saving tokens automatically. works on paste in terminal mode and message input in agent mode.
+`⌘⇧B` -- type once, every pane hears it. useful when you want all your claudes to know something at the same time.
+
+### find
+
+`⌘F` searches inside the current terminal pane with live highlighting and prev/next navigation. `⌘⇧F` opens global find that searches across every open pane simultaneously -- terminals and markdown -- with results showing match counts per pane.
+
+### memory
+
+flock has a built-in memory system (`⌘⇧M`) that captures task summaries and lets you add, edit, pin, and delete memories. pinned memories survive auto-trimming. everything syncs to a `.flock-context.md` file in your working directory so claude has persistent context across sessions.
+
+### wren compression
+
+toggle on prompt compression in preferences and flock runs your messages through [wren](https://github.com/Divagation/wren) before sending. compresses prompts 50-80%, preserving meaning while saving tokens. works on paste in terminal panes and message input in agent mode.
+
+### usage tracking
+
+tracks your daily token usage and cost across all claude sessions. shows input, output, cache read, and cache write tokens with model-specific pricing. monitors plan limits from the Anthropic API. toggle it on in preferences to see it in the status bar.
+
+### themes
+
+7 built-in themes, each with a complete color palette including terminal ANSI colors:
+
+**flock** (warm cream) -- **claude** (terracotta) -- **midnight** (dark blue) -- **ember** (charred brown) -- **vesper** (indigo) -- **overcast** (cool grey) -- **linen** (light)
+
+### session restore
+
+close the app, open it later, everything's still there. your layout, your panes, your working directories, right where you left them.
+
+### notifications & sounds
+
+flock taps you on the shoulder when an agent finishes something. native macOS notifications with optional sound effects. long-running commands (>10s) trigger a notification automatically so you can go get coffee.
+
+### global hotkey
+
+`Ctrl+`` summons flock from anywhere. hit it again to hide. customizable key and modifiers.
+
+### auto-updater
+
+checks for new versions on launch, shows a formatted changelog when you update, and links you straight to the download. toggle it off if you want.
 
 <br>
 
@@ -58,7 +93,7 @@ flock is keyboard-first. your hands never leave the keys.
 | `⌘T` | new claude |
 | `⌘⇧T` | new shell |
 | `⌘W` | close pane |
-| `⌘1`–`⌘9` | jump to pane |
+| `⌘1`--`⌘9` | jump to pane |
 | `⌘←→↑↓` | navigate panes |
 | `⌘↩` | maximize / restore |
 | `⌘D` | split horizontal |
@@ -66,8 +101,12 @@ flock is keyboard-first. your hands never leave the keys.
 | `⌘K` | command palette |
 | `⌘⇧A` | agent mode |
 | `⌘⇧B` | broadcast mode |
-| `⌘F` | find in terminal pane |
+| `⌘⇧M` | memory panel |
+| `⌘⇧L` | change log overlay |
+| `⌘F` | find in pane |
 | `⌘⇧F` | find in all panes |
+| `⌘G` | find next |
+| `⌘⇧G` | find previous |
 
 <br>
 
@@ -87,7 +126,7 @@ that's it. app goes to `/Applications`, cli goes to `flock`.
 
 ## under the hood
 
-native swift. no electron. terminal panes are powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), and markdown panes are native editable text views that autosave to disk. agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. it's fast because it's not pretending to be a website.
+native swift. no electron. terminal panes are powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), and markdown panes are native editable text views that autosave to disk. agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. prompt compression runs through [wren](https://github.com/Divagation/wren), a LoRA fine-tuned model on Apple Silicon via MLX. it's fast because it's not pretending to be a website.
 
 <br>
 
