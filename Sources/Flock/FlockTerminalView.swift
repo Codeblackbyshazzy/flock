@@ -38,8 +38,11 @@ class FlockTerminalView: LocalProcessTerminalView {
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
         super.send(source: source, data: data)
         guard let manager = owningPane?.manager, manager.isBroadcasting else { return }
-        for pane in manager.panes {
-            guard let termPane = pane as? TerminalPane, termPane !== owningPane else { continue }
+        let snapshot = manager.panes
+        for pane in snapshot {
+            guard let termPane = pane as? TerminalPane,
+                  termPane !== owningPane,
+                  termPane.terminalView.process.running else { continue }
             termPane.terminalView.process.send(data: data)
         }
     }

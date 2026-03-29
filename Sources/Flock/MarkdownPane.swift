@@ -38,6 +38,7 @@ class MarkdownPane: FlockPane, NSTextViewDelegate {
     required init?(coder: NSCoder) { fatalError() }
 
     deinit {
+        NotificationCenter.default.removeObserver(self)
         reloadTimer?.invalidate()
         saveTimer?.invalidate()
     }

@@ -75,8 +75,8 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
         if type == .claude {
             contextDirectory = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
-            if Settings.shared.memoryEnabled {
-                MemoryStore.shared.writeContextFile(to: contextDirectory!)
+            if let dir = contextDirectory, Settings.shared.memoryEnabled {
+                MemoryStore.shared.writeContextFile(to: dir)
             }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in

@@ -277,45 +277,92 @@ class PaneManager {
     }
 
     func saveSession() {
-        let sessionPanes: [(type: String, directory: String?, name: String?, sessionId: String?)] = panes.map { pane in
-            if let mp = pane as? MarkdownPane {
-                return (type: "markdown", directory: mp.filePath, name: mp.customName, sessionId: nil)
-            }
-            return (type: pane.paneType == .claude ? "claude" : "shell",
-                    directory: pane.currentDirectory,
-                    name: pane.customName,
-                    sessionId: pane.paneType == .claude ? "resume" : nil)
+        let tabs = tabNodes.map { encodeNode($0) }
+        SessionRestore.save(tabs: tabs, activeIndex: activePaneIndex)
+    }
+
+    private func encodeNode(_ node: SplitNode) -> SessionNode {
+        switch node.content {
+        case .leaf(let pane):
+            let sp = sessionPane(for: pane)
+            return .leaf(sp)
+        case .split(let direction, let first, let second):
+            let dir = direction == .horizontal ? "horizontal" : "vertical"
+            return .split(direction: dir, first: encodeNode(first), second: encodeNode(second), ratio: Double(node.ratio))
         }
-        SessionRestore.save(panes: sessionPanes, activeIndex: activePaneIndex)
+    }
+
+    private func sessionPane(for pane: FlockPane) -> SessionPane {
+        if let mp = pane as? MarkdownPane {
+            return SessionPane(type: "markdown", workingDirectory: mp.filePath, customName: mp.customName, sessionId: nil)
+        }
+        return SessionPane(
+            type: pane.paneType == .claude ? "claude" : "shell",
+            workingDirectory: pane.currentDirectory,
+            customName: pane.customName,
+            sessionId: pane.paneType == .claude ? "resume" : nil
+        )
     }
 
     func restoreSession() {
         guard let layout = SessionRestore.restore() else { return }
-        for sp in layout.panes {
-            if sp.type == "markdown", let path = sp.workingDirectory {
-                let pane = MarkdownPane(filePath: path, manager: self)
-                pane.customName = sp.customName
-                panes.append(pane)
-                tabNodes.append(SplitNode(pane: pane))
-                gridContainer?.addSubview(pane)
-            } else {
-                let type: PaneType = sp.type == "shell" ? .shell : .claude
-                let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
-                pane.customName = sp.customName
-                if type == .claude, sp.sessionId != nil {
-                    pane.shouldResume = true
+
+        if let tabs = layout.tabs {
+            // New tree-based restore
+            for tab in tabs {
+                let node = restoreNode(tab)
+                tabNodes.append(node)
+                for pane in node.allLeaves {
+                    gridContainer?.addSubview(pane)
                 }
+            }
+            rebuildPanesFromNodes()
+        } else if let flatPanes = layout.panes {
+            // Legacy flat restore
+            for sp in flatPanes {
+                let pane = restorePane(sp)
                 panes.append(pane)
                 tabNodes.append(SplitNode(pane: pane))
                 gridContainer?.addSubview(pane)
             }
         }
+
         if layout.activeIndex >= 0, layout.activeIndex < panes.count {
             focusPane(at: layout.activeIndex)
         } else if !panes.isEmpty {
             focusPane(at: 0)
         }
         layoutAndUpdate(animated: false)
+    }
+
+    private func restoreNode(_ sessionNode: SessionNode) -> SplitNode {
+        switch sessionNode {
+        case .leaf(let sp):
+            let pane = restorePane(sp)
+            return SplitNode(pane: pane)
+        case .split(let direction, let first, let second, let ratio):
+            let dir: SplitDirection = direction == "horizontal" ? .horizontal : .vertical
+            let firstNode = restoreNode(first)
+            let secondNode = restoreNode(second)
+            let node = SplitNode(direction: dir, first: firstNode, second: secondNode)
+            node.ratio = CGFloat(ratio)
+            return node
+        }
+    }
+
+    private func restorePane(_ sp: SessionPane) -> FlockPane {
+        if sp.type == "markdown", let path = sp.workingDirectory {
+            let pane = MarkdownPane(filePath: path, manager: self)
+            pane.customName = sp.customName
+            return pane
+        }
+        let type: PaneType = sp.type == "shell" ? .shell : .claude
+        let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
+        pane.customName = sp.customName
+        if type == .claude, sp.sessionId != nil {
+            pane.shouldResume = true
+        }
+        return pane
     }
 
     // MARK: - Layout Presets

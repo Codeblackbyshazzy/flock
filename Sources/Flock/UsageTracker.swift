@@ -378,7 +378,7 @@ class UsageTracker {
                         let timeStr = String(str[timeRange])
                         let tzStr = String(str[tzRange])
                         if let resetDate = parseResetTime(timeStr, timezone: tzStr) {
-                            if latestDate == nil || resetDate > latestDate! {
+                            if latestDate == nil || resetDate > latestDate ?? .distantPast {
                                 latestDate = resetDate
                                 let iso = ISO8601DateFormatter()
                                 iso.formatOptions = [.withInternetDateTime]

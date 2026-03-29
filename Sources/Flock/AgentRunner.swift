@@ -63,6 +63,9 @@ final class AgentProcess {
                     self.handleData(remaining)
                 }
 
+                self.outputPipe.fileHandleForReading.closeFile()
+                self.inputPipe.fileHandleForWriting.closeFile()
+
                 let finalResult = self.parser.finalResult()
                     ?? (isError: self.process?.terminationStatus != 0,
                         text: nil as String?,

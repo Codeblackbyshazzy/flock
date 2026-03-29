@@ -72,6 +72,7 @@ final class WrenCompressor {
         guard proc.terminationStatus == 0 else { return nil }
 
         let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        outputPipe.fileHandleForReading.closeFile()
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

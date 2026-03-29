@@ -1,15 +1,67 @@
 import Foundation
 
 struct SessionPane: Codable {
-    let type: String        // "claude" or "shell"
+    let type: String        // "claude", "shell", or "markdown"
     let workingDirectory: String?
     let customName: String?
     let sessionId: String?
 }
 
+/// Recursive node that mirrors SplitNode for serialization.
+indirect enum SessionNode: Codable {
+    case leaf(SessionPane)
+    case split(direction: String, first: SessionNode, second: SessionNode, ratio: Double)
+
+    // Manual Codable because recursive enums with associated values need it
+    private enum CodingKeys: String, CodingKey {
+        case kind, pane, direction, first, second, ratio
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let kind = try c.decode(String.self, forKey: .kind)
+        if kind == "leaf" {
+            let pane = try c.decode(SessionPane.self, forKey: .pane)
+            self = .leaf(pane)
+        } else {
+            let dir = try c.decode(String.self, forKey: .direction)
+            let first = try c.decode(SessionNode.self, forKey: .first)
+            let second = try c.decode(SessionNode.self, forKey: .second)
+            let ratio = try c.decodeIfPresent(Double.self, forKey: .ratio) ?? 0.5
+            self = .split(direction: dir, first: first, second: second, ratio: ratio)
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .leaf(let pane):
+            try c.encode("leaf", forKey: .kind)
+            try c.encode(pane, forKey: .pane)
+        case .split(let direction, let first, let second, let ratio):
+            try c.encode("split", forKey: .kind)
+            try c.encode(direction, forKey: .direction)
+            try c.encode(first, forKey: .first)
+            try c.encode(second, forKey: .second)
+            try c.encode(ratio, forKey: .ratio)
+        }
+    }
+
+    /// Collect all leaf panes in order.
+    var allPanes: [SessionPane] {
+        switch self {
+        case .leaf(let pane): return [pane]
+        case .split(_, let first, let second, _): return first.allPanes + second.allPanes
+        }
+    }
+}
+
 struct SessionLayout: Codable {
-    let panes: [SessionPane]
+    // Flat list kept for backwards compatibility with old session.json files
+    let panes: [SessionPane]?
     let activeIndex: Int
+    // Tree-based tab layout (new)
+    let tabs: [SessionNode]?
 }
 
 enum SessionRestore {
@@ -20,13 +72,10 @@ enum SessionRestore {
         return dir.appendingPathComponent("session.json")
     }
 
-    static func save(panes: [(type: String, directory: String?, name: String?, sessionId: String?)], activeIndex: Int) {
-        let layout = SessionLayout(
-            panes: panes.map { SessionPane(type: $0.type, workingDirectory: $0.directory, customName: $0.name, sessionId: $0.sessionId) },
-            activeIndex: activeIndex
-        )
+    static func save(tabs: [SessionNode], activeIndex: Int) {
+        let layout = SessionLayout(panes: nil, activeIndex: activeIndex, tabs: tabs)
         if let data = try? JSONEncoder().encode(layout) {
-            try? data.write(to: sessionURL)
+            try? data.write(to: sessionURL, options: .atomic)
         }
     }
 

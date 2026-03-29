@@ -236,14 +236,7 @@ class CommandPalette {
 
     private func applyPreset(_ preset: LayoutPreset) {
         guard let pm = paneManager else { return }
-        // Close all existing panes
-        while !pm.panes.isEmpty {
-            pm.closePane(at: pm.panes.count - 1)
-        }
-        // Add preset panes
-        for paneType in preset.panes {
-            pm.addPane(type: paneType)
-        }
+        pm.applyPreset(preset)
     }
 
     private func openMarkdownPicker() {
