@@ -21,6 +21,16 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.2", date: "2026-03-30", changes: [
+            "Fixed SIGPIPE crash when writing to terminated process pipes",
+            "Fixed AppleScript injection vulnerability in notification pane names",
+            "Arrow key navigation now works correctly with split panes",
+            "Fixed WrenCompressor deadlock on large output",
+            "Fixed Close Others closing the wrong tab",
+            "Pane focus tracking now uses identity instead of fragile indices",
+            "Token usage no longer double-counts cache tokens",
+            "31 total bug fixes from comprehensive audit",
+        ]),
         ChangelogEntry(version: "0.9.1", date: "2026-03-29", changes: [
             "Wren prompt compression -- toggle in Preferences to compress messages before sending, saving tokens automatically",
             "Works on paste in terminal panes and message input in agent mode",
