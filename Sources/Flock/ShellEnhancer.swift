@@ -28,6 +28,24 @@ enum ShellEnhancer {
         return nil
     }
 
+    /// Clean up stale ZDOTDIR entries from previous crashed sessions
+    static func cleanupStale() {
+        let tmpBase = NSTemporaryDirectory() + "flock-shell"
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(atPath: tmpBase) else { return }
+        let myPid = ProcessInfo.processInfo.processIdentifier
+        for entry in entries {
+            // Each entry is named "<pid>-<random>"
+            let parts = entry.split(separator: "-")
+            if let pidStr = parts.first, let pid = Int32(pidStr), pid != myPid {
+                // Check if that PID is still running
+                if kill(pid, 0) != 0 {
+                    try? fm.removeItem(atPath: "\(tmpBase)/\(entry)")
+                }
+            }
+        }
+    }
+
     /// Creates a temp ZDOTDIR and returns the environment array for startProcess.
     /// Returns nil if the shell isn't zsh or plugin isn't found.
     static func enhancedEnvironment(workingDirectory: String?) -> (env: [String], zdotdir: String)? {

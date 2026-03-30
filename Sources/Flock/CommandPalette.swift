@@ -87,7 +87,8 @@ class CommandPalette {
         CATransaction.commit()
 
         // Focus the search field after animation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            guard self?.isVisible == true else { return }
             window.makeFirstResponder(card.searchField)
         }
     }

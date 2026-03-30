@@ -8,6 +8,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var commandPalette = CommandPalette()
     let memorySidebar = MemorySidebar()
     var hotkeyManager: GlobalHotkeyManager?
+    private var clickMonitor: Any?
+    private var focusObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Notifications
@@ -60,14 +62,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Auto-update check
         UpdateChecker.shared.checkOnLaunchIfNeeded()
 
+        // Clean up stale shell temp dirs from crashed sessions
+        ShellEnhancer.cleanupStale()
+
         // Click-to-focus
-        NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+        clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             self?.paneManager.handleClick(event: event)
             return event
         }
 
         // Handle notification tap -> focus pane
-        NotificationCenter.default.addObserver(forName: FlockNotifications.focusPaneRequested,
+        focusObserver = NotificationCenter.default.addObserver(forName: FlockNotifications.focusPaneRequested,
                                                object: nil, queue: .main) { [weak self] note in
             if let idx = note.userInfo?["paneIndex"] as? Int {
                 self?.paneManager.focusPane(at: idx)
@@ -290,6 +295,9 @@ private func addItem(_ menu: NSMenu, _ title: String, _ action: Selector,
 }
 
 // MARK: - Entry point
+
+// Prevent SIGPIPE crashes when writing to terminated process pipes
+signal(SIGPIPE, SIG_IGN)
 
 let app = NSApplication.shared
 let delegate = AppDelegate()

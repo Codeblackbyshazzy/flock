@@ -53,11 +53,12 @@ final class AgentProcess {
             self?.parserQueue.async { self?.handleData(data) }
         }
 
-        proc.terminationHandler = { [weak self] _ in
+        proc.terminationHandler = { [weak self] process in
             guard let self = self else { return }
             self.outputPipe.fileHandleForReading.readabilityHandler = nil
             // Drain remaining data on the serial queue to avoid racing with readabilityHandler
-            self.parserQueue.async {
+            self.parserQueue.async { [weak self] in
+                guard let self = self else { return }
                 let remaining = self.outputPipe.fileHandleForReading.readDataToEndOfFile()
                 if !remaining.isEmpty {
                     self.handleData(remaining)
@@ -67,12 +68,12 @@ final class AgentProcess {
                 self.inputPipe.fileHandleForWriting.closeFile()
 
                 let finalResult = self.parser.finalResult()
-                    ?? (isError: self.process?.terminationStatus != 0,
+                    ?? (isError: process.terminationStatus != 0,
                         text: nil as String?,
                         costUsd: nil as Double?)
 
-                DispatchQueue.main.async {
-                    self.onComplete?(finalResult)
+                DispatchQueue.main.async { [weak self] in
+                    self?.onComplete?(finalResult)
                 }
             }
         }
@@ -99,6 +100,8 @@ final class AgentProcess {
     // MARK: - Terminate
 
     func terminate() {
+        // Prevent the terminationHandler from calling onComplete after explicit terminate
+        onComplete = nil
         outputPipe.fileHandleForReading.readabilityHandler = nil
         if let proc = process, proc.isRunning {
             proc.terminate()
@@ -154,9 +157,16 @@ final class AgentRunner {
     /// Starts the next backlog task if capacity allows.
     func scheduleNext() {
         let maxParallel = Settings.shared.maxParallelAgents
-        while activeCount < maxParallel {
-            guard let nextTask = TaskStore.shared.backlog.first else { break }
-            start(nextTask)
+        // Collect tasks first to avoid recursive calls if start() synchronously completes
+        var tasksToStart: [AgentTask] = []
+        let backlog = TaskStore.shared.backlog
+        for task in backlog {
+            guard activeCount + tasksToStart.count < maxParallel else { break }
+            guard runningProcesses[task.id] == nil else { continue }
+            tasksToStart.append(task)
+        }
+        for task in tasksToStart {
+            start(task)
         }
     }
 

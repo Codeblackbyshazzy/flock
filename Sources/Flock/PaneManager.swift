@@ -59,6 +59,20 @@ class PaneManager {
         closeFindBar()
         let pane = panes[index]
 
+        // Track desired focus target by identity before mutation
+        let wasActive = (index == activePaneIndex)
+        let nextFocusPane: FlockPane? = {
+            if wasActive {
+                // Prefer the pane after, else before
+                if index + 1 < panes.count { return panes[index + 1] }
+                if index - 1 >= 0 { return panes[index - 1] }
+                return nil
+            } else if activePaneIndex >= 0, activePaneIndex < panes.count {
+                return panes[activePaneIndex]
+            }
+            return nil
+        }()
+
         // Update tabNodes: remove the pane from its split tree or remove the whole tab
         if let tabIdx = tabNodes.firstIndex(where: { $0.findLeaf(containing: pane) != nil }) {
             if tabNodes[tabIdx].leafCount <= 1 {
@@ -74,19 +88,28 @@ class PaneManager {
         // Rebuild flat panes array from the updated tree
         rebuildPanesFromNodes()
 
+        // Restore focus by identity
+        if activePaneIndex >= 0, activePaneIndex < panes.count {
+            panes[activePaneIndex].isFocused = false
+        }
         if panes.isEmpty {
             activePaneIndex = -1
+        } else if let target = nextFocusPane, let newIdx = panes.firstIndex(where: { $0 === target }) {
+            activePaneIndex = newIdx
+            panes[newIdx].isFocused = true
+            let responder = panes[newIdx].firstResponderView
+            responder.window?.makeFirstResponder(responder)
         } else {
-            activePaneIndex = min(max(0, index <= activePaneIndex ? activePaneIndex - 1 : activePaneIndex), panes.count - 1)
+            activePaneIndex = min(max(0, activePaneIndex), panes.count - 1)
             panes[activePaneIndex].isFocused = true
             let responder = panes[activePaneIndex].firstResponderView
             responder.window?.makeFirstResponder(responder)
         }
         isMaximized = false
 
-        // Animate exit, then remove + reflow
+        // Shutdown immediately, then animate exit
+        pane.shutdown()
         pane.animateExit { [weak pane] in
-            pane?.shutdown()
             pane?.removeFromSuperview()
         }
 
@@ -103,12 +126,16 @@ class PaneManager {
         let leaves = tabNodes[tabIndex].allLeaves
         tabNodes.remove(at: tabIndex)
         for pane in leaves {
+            pane.shutdown()
             pane.animateExit { [weak pane] in
-                pane?.shutdown()
                 pane?.removeFromSuperview()
             }
         }
         rebuildPanesFromNodes()
+        // Clear old focus
+        if activePaneIndex >= 0, activePaneIndex < panes.count {
+            panes[activePaneIndex].isFocused = false
+        }
         if panes.isEmpty {
             activePaneIndex = -1
         } else {
@@ -378,10 +405,20 @@ class PaneManager {
         activePaneIndex = -1
         isMaximized = false
 
-        // Create new panes
+        // Create all panes without intermediate layouts
         for type in preset.panes {
-            addPane(type: type)
+            guard type != .markdown else { continue }
+            let pane = TerminalPane(type: type, manager: self)
+            panes.append(pane)
+            tabNodes.append(SplitNode(pane: pane))
+            gridContainer?.addSubview(pane)
         }
+        if !panes.isEmpty {
+            focusPane(at: panes.count - 1)
+        }
+        // Single layout pass after all panes created
+        layoutAndUpdate(animated: true)
+        for pane in panes { pane.animateEntrance() }
     }
 
     // MARK: - Tab Reorder
@@ -446,21 +483,37 @@ class PaneManager {
 
     func navigateDirection(_ dir: Direction) {
         guard !isMaximized, panes.count > 1, activePaneIndex >= 0, activePaneIndex < panes.count else { return }
-        let dims = gridDimensions(for: panes.count)
-        let cols = dims.cols
-        let row = activePaneIndex / cols
-        let col = activePaneIndex % cols
+        let activePane = panes[activePaneIndex]
+        let activeFrame = activePane.frame
+        let center = CGPoint(x: activeFrame.midX, y: activeFrame.midY)
 
-        var newIndex = activePaneIndex
-        switch dir {
-        case .left:  newIndex = row * cols + max(0, col - 1)
-        case .right: newIndex = min(panes.count - 1, row * cols + min(cols - 1, col + 1))
-        case .up:    newIndex = max(0, (row - 1) * cols + col)
-        case .down:
-            let below = (row + 1) * cols + col
-            newIndex = below < panes.count ? below : activePaneIndex
+        // Find closest pane in the given direction by actual frame position
+        var bestIndex = activePaneIndex
+        var bestDistance = CGFloat.greatestFiniteMagnitude
+
+        for (i, pane) in panes.enumerated() where i != activePaneIndex {
+            let f = pane.frame
+            let pc = CGPoint(x: f.midX, y: f.midY)
+            let dx = pc.x - center.x
+            let dy = pc.y - center.y
+
+            let inDirection: Bool
+            switch dir {
+            case .left:  inDirection = dx < -1
+            case .right: inDirection = dx > 1
+            case .up:    inDirection = dy < -1  // flipped coordinates
+            case .down:  inDirection = dy > 1
+            }
+            guard inDirection else { continue }
+
+            let dist = dx * dx + dy * dy
+            if dist < bestDistance {
+                bestDistance = dist
+                bestIndex = i
+            }
         }
-        if newIndex != activePaneIndex { focusPane(at: newIndex) }
+
+        if bestIndex != activePaneIndex { focusPane(at: bestIndex) }
     }
 
     func handleClick(event: NSEvent) {

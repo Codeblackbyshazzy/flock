@@ -86,8 +86,9 @@ class SplitNode {
 
         // Check if a direct child leaf matches
         if case .leaf(let p) = first.content, p === pane {
-            // Promote second child's content to this node
+            // Promote second child's content and ratio to this node
             self.content = second.content
+            self.ratio = second.ratio
             if case .split(_, let a, let b) = self.content {
                 a.parent = self
                 b.parent = self
@@ -96,6 +97,7 @@ class SplitNode {
         }
         if case .leaf(let p) = second.content, p === pane {
             self.content = first.content
+            self.ratio = first.ratio
             if case .split(_, let a, let b) = self.content {
                 a.parent = self
                 b.parent = self

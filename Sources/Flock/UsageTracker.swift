@@ -173,7 +173,8 @@ class UsageTracker {
             usage.outputTokens += output
             usage.cacheReadTokens += cacheRead
             usage.cacheCreateTokens += cacheCreate
-            usage.totalTokens += input + output + cacheRead + cacheCreate
+            // input_tokens includes cache tokens, so total is just input + output
+            usage.totalTokens += input + output
 
             let p = pricing[model] ?? defaultPricing
             usage.costUSD += Double(input) / 1_000_000 * p.input
@@ -241,18 +242,19 @@ class UsageTracker {
 
             // 429 means rate-limited — treat as 100% usage
             if http.statusCode == 429 {
-                let prev = self?.limits ?? Limits()
-                var capped = Limits()
-                capped.available = true
-                capped.fiveHourPercent = 100.0
-                capped.sevenDayPercent = prev.sevenDayPercent
-                capped.sevenDayResetsAt = prev.sevenDayResetsAt
-                capped.fiveHourResetsAt = prev.fiveHourResetsAt ?? self?.parseResetFromSessions()
-                let changed = capped != self?.limits
-                DispatchQueue.main.async {
-                    self?.limits = capped
-                    self?.saveLimits(capped)
-                    if changed {
+                // Snapshot limits on main thread to avoid data race
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    let prev = self.limits
+                    var capped = Limits()
+                    capped.available = true
+                    capped.fiveHourPercent = 100.0
+                    capped.sevenDayPercent = prev.sevenDayPercent
+                    capped.sevenDayResetsAt = prev.sevenDayResetsAt
+                    capped.fiveHourResetsAt = prev.fiveHourResetsAt ?? self.parseResetFromSessions()
+                    if capped != self.limits {
+                        self.limits = capped
+                        self.saveLimits(capped)
                         NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)
                     }
                 }
@@ -291,7 +293,8 @@ class UsageTracker {
 
     var formattedCost: String {
         let cost = today.costUSD
-        if cost < 0.01 { return "$0.00" }
+        if cost == 0 { return "$0.00" }
+        if cost < 0.01 { return "<$0.01" }
         if cost < 10 { return String(format: "$%.2f", cost) }
         return String(format: "$%.0f", cost)
     }

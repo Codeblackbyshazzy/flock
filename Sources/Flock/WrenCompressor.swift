@@ -67,12 +67,14 @@ final class WrenCompressor {
         inputPipe.fileHandleForWriting.write(Data(text.utf8))
         inputPipe.fileHandleForWriting.closeFile()
 
+        // Read output BEFORE waiting for exit to avoid deadlock when output exceeds pipe buffer
+        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        outputPipe.fileHandleForReading.closeFile()
+
         proc.waitUntilExit()
 
         guard proc.terminationStatus == 0 else { return nil }
 
-        let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        outputPipe.fileHandleForReading.closeFile()
         return String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

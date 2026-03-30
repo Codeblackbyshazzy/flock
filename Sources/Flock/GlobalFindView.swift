@@ -59,7 +59,8 @@ class GlobalFindView {
         panel.layer?.transform = CATransform3DIdentity
         CATransaction.commit()
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            guard self?.isVisible == true else { return }
             window.makeFirstResponder(panel.searchField)
         }
     }
@@ -358,12 +359,13 @@ private class GlobalFindResultsView: NSView {
 
 private extension NSImage {
     func tinted(with color: NSColor) -> NSImage {
-        guard let img = self.copy() as? NSImage else { return self }
-        img.lockFocus()
-        color.set()
-        NSRect(origin: .zero, size: img.size).fill(using: .sourceAtop)
-        img.unlockFocus()
-        img.isTemplate = false
-        return img
+        let tinted = NSImage(size: size, flipped: false) { [self] rect in
+            self.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        tinted.isTemplate = false
+        return tinted
     }
 }

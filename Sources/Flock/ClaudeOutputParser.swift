@@ -254,7 +254,10 @@ final class ClaudeOutputParser {
         idleTimer = Timer.scheduledTimer(withTimeInterval: idleTimeout, repeats: false) { [weak self] _ in
             guard let self = self, self.state != .idle else { return }
             self.state = .idle
-            self.onStateChange?(.idle)
+            // Dispatch async to match the delivery pattern of all other state changes
+            DispatchQueue.main.async { [weak self] in
+                self?.onStateChange?(.idle)
+            }
         }
     }
 }

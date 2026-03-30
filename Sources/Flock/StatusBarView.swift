@@ -100,16 +100,16 @@ class StatusBarView: NSView {
         }
 
         if newText != lastText && !lastText.isEmpty {
-            NSAnimationContext.runAnimationGroup({ ctx in
+            // Cancel any in-flight animation by setting immediately, then animate
+            label.layer?.removeAllAnimations()
+            label.alphaValue = 1
+            label.stringValue = newText
+            // Quick flash to indicate change
+            label.alphaValue = 0.3
+            NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = Theme.Anim.fast
-                self.label.animator().alphaValue = 0
-            }, completionHandler: { [weak self] in
-                self?.label.stringValue = newText
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = Theme.Anim.fast
-                    self?.label.animator().alphaValue = 1
-                }
-            })
+                self.label.animator().alphaValue = 1
+            }
         } else {
             label.stringValue = newText
         }
@@ -156,16 +156,14 @@ class StatusBarView: NSView {
         usageLabel.isHidden = false
         let text = UsageTracker.shared.statusText
         if text != usageLabel.stringValue {
-            NSAnimationContext.runAnimationGroup({ ctx in
+            usageLabel.layer?.removeAllAnimations()
+            usageLabel.alphaValue = 1
+            usageLabel.stringValue = text
+            usageLabel.alphaValue = 0.3
+            NSAnimationContext.runAnimationGroup { ctx in
                 ctx.duration = Theme.Anim.fast
-                self.usageLabel.animator().alphaValue = 0
-            }, completionHandler: { [weak self] in
-                self?.usageLabel.stringValue = text
-                NSAnimationContext.runAnimationGroup { ctx in
-                    ctx.duration = Theme.Anim.fast
-                    self?.usageLabel.animator().alphaValue = 1
-                }
-            })
+                self.usageLabel.animator().alphaValue = 1
+            }
         }
     }
 

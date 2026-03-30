@@ -99,6 +99,7 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
     deinit {
         byteWindowTimer?.invalidate()
         agentActivityTimer?.invalidate()
+        shutdown()
     }
 
     @objc private func settingsChanged(_ note: Notification) {

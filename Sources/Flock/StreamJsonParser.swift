@@ -22,10 +22,16 @@ final class StreamJsonParser {
 
     private var buffer = Data()
     private var lastResult: (isError: Bool, text: String?, costUsd: Double?)?
+    private static let maxBufferSize = 10 * 1024 * 1024  // 10 MB safety limit
 
     /// Accumulates incoming data, splits on newlines, and emits events.
     func feed(_ data: Data, handler: (StreamJsonEvent) -> Void) {
         buffer.append(data)
+        // Prevent unbounded growth on malformed input
+        if buffer.count > Self.maxBufferSize {
+            buffer = Data()
+            return
+        }
 
         // Process all complete lines (newline-delimited JSON)
         while let newlineIndex = buffer.firstIndex(of: UInt8(ascii: "\n")) {

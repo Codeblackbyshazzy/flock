@@ -63,9 +63,23 @@ class PreferencesView: NSView {
         wantsLayer = true
         layer?.backgroundColor = Theme.chrome.cgColor
         setupControls()
+
+        NotificationCenter.default.addObserver(self, selector: #selector(themeChanged),
+                                               name: Theme.themeDidChange, object: nil)
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    @objc private func themeChanged() {
+        layer?.backgroundColor = Theme.chrome.cgColor
+        doneButton.layer?.backgroundColor = Theme.surface.cgColor
+        doneButton.layer?.borderColor = Theme.divider.cgColor
+        doneButton.contentTintColor = Theme.textPrimary
+        let selectedIdx = Themes.all.firstIndex(where: { $0.id == Settings.shared.themeId }) ?? 0
+        updateSwatchSelection(selectedIndex: selectedIdx)
+    }
 
     // MARK: - Setup
 

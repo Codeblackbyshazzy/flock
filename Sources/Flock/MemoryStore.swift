@@ -226,11 +226,13 @@ final class MemoryStore {
 
     private func trimIfNeeded() {
         guard memories.count > maxMemories else { return }
-        // Keep pinned, remove oldest unpinned
+        // Keep pinned, remove oldest unpinned (only remove as many as are unpinned)
         let unpinned = memories.filter { !$0.pinned }
             .sorted { $0.createdAt > $1.createdAt }
         let excess = memories.count - maxMemories
-        let toRemove = Set(unpinned.suffix(excess).map { $0.id })
+        let removableCount = min(excess, unpinned.count)
+        guard removableCount > 0 else { return }
+        let toRemove = Set(unpinned.suffix(removableCount).map { $0.id })
         memories.removeAll { toRemove.contains($0.id) }
     }
 }

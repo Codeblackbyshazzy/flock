@@ -64,8 +64,12 @@ enum FlockNotifications {
     }
 
     private static func escapeAppleScript(_ s: String) -> String {
-        s.replacingOccurrences(of: "\\", with: "\\\\")
-         .replacingOccurrences(of: "\"", with: "\\\"")
+        // Strip control characters (newlines, tabs, etc.) to prevent injection,
+        // then escape backslashes and quotes for AppleScript string literals
+        let cleaned = s.unicodeScalars.filter { $0.value >= 32 && $0.value != 127 }
+        return String(cleaned)
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 
     private static func sendOsascript(title: String, message: String) {

@@ -218,10 +218,14 @@ class TabBarView: NSView, NSTextFieldDelegate {
         }
     }
 
-    /// Begin close animation for a tab index (called before the actual data is removed)
+    /// Begin close animation for a tab index (called before the actual data is removed).
+    /// Uses a unique animation ID to avoid index-shift collisions during rapid closes.
+    private var closeAnimationCounter: Int = 0
     func animateTabClose(at index: Int) {
-        tabCloseProgress[index] = 0.0
-        pendingCloseTabIndices.append(index)
+        closeAnimationCounter += 1
+        let animId = closeAnimationCounter * 1000 + index
+        tabCloseProgress[animId] = 0.0
+        pendingCloseTabIndices.append(animId)
         startHoverAnimation()
     }
 
@@ -762,11 +766,11 @@ class TabBarView: NSView, NSTextFieldDelegate {
             item.target = self
             item.tag = index * 100 + ci  // encode both pane index and color index
             if let c = preset.color {
-                let swatch = NSImage(size: NSSize(width: 12, height: 12))
-                swatch.lockFocus()
-                c.setFill()
-                NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: 10, height: 10)).fill()
-                swatch.unlockFocus()
+                let swatch = NSImage(size: NSSize(width: 12, height: 12), flipped: false) { rect in
+                    c.setFill()
+                    NSBezierPath(ovalIn: NSRect(x: 1, y: 1, width: 10, height: 10)).fill()
+                    return true
+                }
                 item.image = swatch
             }
             colorMenu.addItem(item)
@@ -816,9 +820,12 @@ class TabBarView: NSView, NSTextFieldDelegate {
     }
     @objc private func ctxClose(_ s: NSMenuItem) { paneManager?.closeTab(at: s.tag) }
     @objc private func ctxCloseOthers(_ s: NSMenuItem) {
-        guard let mgr = paneManager else { return }
-        for i in stride(from: mgr.tabNodes.count - 1, through: 0, by: -1) {
-            if i != s.tag { mgr.closeTab(at: i) }
+        guard let mgr = paneManager, s.tag < mgr.tabNodes.count else { return }
+        // Capture the node to keep by identity, then close everything else
+        let keepNode = mgr.tabNodes[s.tag]
+        while mgr.tabNodes.count > 1 {
+            guard let idx = mgr.tabNodes.firstIndex(where: { $0 !== keepNode }) else { break }
+            mgr.closeTab(at: idx)
         }
     }
 
