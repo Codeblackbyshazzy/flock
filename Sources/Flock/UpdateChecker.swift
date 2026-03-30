@@ -206,5 +206,5 @@ final class UpdateChecker {
 
 // Fallback version constant (used when not running as .app bundle)
 enum FlockVersion {
-    static let current = "0.9.1"
+    static let current = "0.9.2"
 }
