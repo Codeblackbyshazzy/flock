@@ -63,7 +63,8 @@ class StatusBarView: NSView {
 
     @objc private func taskStoreChanged() { update() }
     @objc private func usageUpdated() { updateUsage() }
-    @objc private func settingsChanged() {
+    @objc private func settingsChanged(_ note: Notification) {
+        guard let key = note.userInfo?["key"] as? String, key == "showUsageTracker" else { return }
         let show = Settings.shared.showUsageTracker
         usageLabel.isHidden = !show
         if show {

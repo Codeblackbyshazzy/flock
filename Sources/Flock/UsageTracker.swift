@@ -35,6 +35,7 @@ class UsageTracker {
     private(set) var limits = Limits()
     private var timer: Timer?
     private var limitsTimer: Timer?
+    private var isRunning = false
     private let queue = DispatchQueue(label: "com.flock.usage", qos: .utility)
 
     private func saveLimits(_ l: Limits) {
@@ -78,7 +79,8 @@ class UsageTracker {
     private init() {}
 
     func start() {
-        stop()
+        guard !isRunning else { return }
+        isRunning = true
         limits = loadLimits()
         if limits.available {
             NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)
@@ -99,6 +101,7 @@ class UsageTracker {
         timer = nil
         limitsTimer?.invalidate()
         limitsTimer = nil
+        isRunning = false
     }
 
     func refresh() {

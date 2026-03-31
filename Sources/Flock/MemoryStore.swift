@@ -152,7 +152,10 @@ final class MemoryStore {
     /// Writes a `.flock-context.md` file in the given directory with relevant memories.
     func writeContextFile(to directory: String) {
         guard Settings.shared.memoryEnabled else { return }
-        guard !memories.isEmpty else { return }
+        guard !memories.isEmpty else {
+            removeContextFile(from: directory)
+            return
+        }
 
         let fileURL = URL(fileURLWithPath: directory).appendingPathComponent(".flock-context.md")
 

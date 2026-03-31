@@ -124,6 +124,28 @@ class PaneManager {
         guard tabIndex >= 0, tabIndex < tabNodes.count else { return }
         tabBar?.animateTabClose(at: tabIndex)
         let leaves = tabNodes[tabIndex].allLeaves
+        let activePane: FlockPane? = {
+            guard activePaneIndex >= 0, activePaneIndex < panes.count else { return nil }
+            return panes[activePaneIndex]
+        }()
+        let closingIndices = leaves.compactMap { leaf in
+            panes.firstIndex(where: { $0 === leaf })
+        }
+        let nextFocusPane: FlockPane? = {
+            guard let activePane else { return nil }
+            if leaves.contains(where: { $0 === activePane }) {
+                guard let firstClosingIndex = closingIndices.min(),
+                      let lastClosingIndex = closingIndices.max() else { return nil }
+                if lastClosingIndex + 1 < panes.count {
+                    return panes[lastClosingIndex + 1]
+                }
+                if firstClosingIndex > 0 {
+                    return panes[firstClosingIndex - 1]
+                }
+                return nil
+            }
+            return activePane
+        }()
         tabNodes.remove(at: tabIndex)
         for pane in leaves {
             pane.shutdown()
@@ -132,12 +154,14 @@ class PaneManager {
             }
         }
         rebuildPanesFromNodes()
-        // Clear old focus
-        if activePaneIndex >= 0, activePaneIndex < panes.count {
-            panes[activePaneIndex].isFocused = false
-        }
+        panes.forEach { $0.isFocused = false }
         if panes.isEmpty {
             activePaneIndex = -1
+        } else if let target = nextFocusPane, let newIdx = panes.firstIndex(where: { $0 === target }) {
+            activePaneIndex = newIdx
+            panes[newIdx].isFocused = true
+            let responder = panes[newIdx].firstResponderView
+            responder.window?.makeFirstResponder(responder)
         } else {
             activePaneIndex = max(0, min(activePaneIndex, panes.count - 1))
             panes[activePaneIndex].isFocused = true
