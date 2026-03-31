@@ -67,7 +67,21 @@ final class MemoryStore {
     static let shared = MemoryStore()
     static let didChange = Notification.Name("MemoryStore.didChange")
 
-    private(set) var memories: [MemoryEntry] = []
+    private var _memories: [MemoryEntry] = []
+    private let lock = NSRecursiveLock()
+
+    private(set) var memories: [MemoryEntry] {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _memories
+        }
+        set {
+            lock.lock()
+            _memories = newValue
+            lock.unlock()
+        }
+    }
 
     private let fileURL: URL = {
         let support = FileManager.default.urls(
@@ -220,11 +234,16 @@ final class MemoryStore {
     }
 
     func restore() {
-        guard let data = try? Data(contentsOf: fileURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let loaded = try? decoder.decode([MemoryEntry].self, from: data) else { return }
-        memories = loaded
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        do {
+            let data = try Data(contentsOf: fileURL)
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let loaded = try decoder.decode([MemoryEntry].self, from: data)
+            memories = loaded
+        } catch {
+            NSLog("[Flock] Memory restore failed (possible data corruption): %@", error.localizedDescription)
+        }
     }
 
     private func trimIfNeeded() {

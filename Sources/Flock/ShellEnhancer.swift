@@ -51,7 +51,10 @@ enum ShellEnhancer {
     static func enhancedEnvironment(workingDirectory: String?) -> (env: [String], zdotdir: String)? {
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         guard shell.hasSuffix("/zsh") else { return nil }
-        guard let plugin = pluginPath else { return nil }
+        guard let plugin = pluginPath else {
+            NSLog("[Flock] zsh-autosuggestions plugin not found; shell enhancements disabled")
+            return nil
+        }
 
         // Create temp ZDOTDIR
         let tmpBase = NSTemporaryDirectory() + "flock-shell"

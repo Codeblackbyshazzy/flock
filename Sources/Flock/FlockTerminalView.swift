@@ -66,8 +66,9 @@ class FlockTerminalView: LocalProcessTerminalView {
         let snapshot = manager.panes
         for pane in snapshot {
             guard let termPane = pane as? TerminalPane,
-                  termPane !== owningPane,
-                  termPane.terminalView.process.running else { continue }
+                  termPane !== owningPane else { continue }
+            // Verify running at point of use; SIGPIPE ignored globally for safety
+            guard termPane.terminalView.process.running else { continue }
             termPane.terminalView.process.send(data: data)
         }
     }

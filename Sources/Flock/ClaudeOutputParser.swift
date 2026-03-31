@@ -142,6 +142,7 @@ final class ClaudeOutputParser {
     // MARK: - Feed
 
     func feed(_ text: String) {
+        assert(Thread.isMainThread, "ClaudeOutputParser.feed must be called from main thread")
         let clean = stripAnsi(text)
         guard clean.count > 5 else { return }  // skip tiny fragments
 

@@ -74,14 +74,23 @@ enum SessionRestore {
 
     static func save(tabs: [SessionNode], activeIndex: Int) {
         let layout = SessionLayout(panes: nil, activeIndex: activeIndex, tabs: tabs)
-        if let data = try? JSONEncoder().encode(layout) {
-            try? data.write(to: sessionURL, options: .atomic)
+        do {
+            let data = try JSONEncoder().encode(layout)
+            try data.write(to: sessionURL, options: .atomic)
+        } catch {
+            NSLog("[Flock] Session save failed: %@", error.localizedDescription)
         }
     }
 
     static func restore() -> SessionLayout? {
-        guard let data = try? Data(contentsOf: sessionURL) else { return nil }
-        return try? JSONDecoder().decode(SessionLayout.self, from: data)
+        guard FileManager.default.fileExists(atPath: sessionURL.path) else { return nil }
+        do {
+            let data = try Data(contentsOf: sessionURL)
+            return try JSONDecoder().decode(SessionLayout.self, from: data)
+        } catch {
+            NSLog("[Flock] Session restore failed (possible corruption): %@", error.localizedDescription)
+            return nil
+        }
     }
 
     static func clear() {

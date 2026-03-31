@@ -8,6 +8,7 @@ enum FlockNotifications {
     /// Debounce: track last notification per pane to suppress duplicates
     private static var lastNotification: [String: (message: String, time: Date)] = [:]
     private static let debounceInterval: TimeInterval = 5.0
+    private static let lock = NSLock()
 
     static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
@@ -41,14 +42,18 @@ enum FlockNotifications {
     private static func send(title: String, body: String, key: String) {
         // Debounce: skip if same message for same pane within interval
         let now = Date()
+        lock.lock()
         if let last = lastNotification[key],
            last.message == body,
            now.timeIntervalSince(last.time) < debounceInterval {
+            lock.unlock()
             return
         }
         lastNotification[key] = (message: body, time: now)
+        let shouldNotify = useNative
+        lock.unlock()
 
-        if useNative {
+        if shouldNotify {
             let content = UNMutableNotificationContent()
             content.title = title
             content.body = body

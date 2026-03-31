@@ -83,6 +83,9 @@ final class AgentProcess {
         do {
             try proc.run()
         } catch {
+            self.process = nil
+            outputPipe.fileHandleForReading.closeFile()
+            inputPipe.fileHandleForWriting.closeFile()
             let result = (isError: true, text: "Failed to launch: \(error.localizedDescription)" as String?, costUsd: nil as Double?)
             onComplete?(result)
         }
@@ -156,6 +159,7 @@ final class AgentRunner {
 
     /// Starts the next backlog task if capacity allows.
     func scheduleNext() {
+        assert(Thread.isMainThread, "AgentRunner must be accessed from main thread")
         let maxParallel = Settings.shared.maxParallelAgents
         // Collect tasks first to avoid recursive calls if start() synchronously completes
         var tasksToStart: [AgentTask] = []
@@ -174,6 +178,7 @@ final class AgentRunner {
 
     /// Creates an AgentProcess for the task, moves it to inProgress, and launches.
     func start(_ task: AgentTask) {
+        assert(Thread.isMainThread, "AgentRunner must be accessed from main thread")
         guard runningProcesses[task.id] == nil else { return }
         TaskStore.shared.moveToInProgress(task)
         wireAndLaunch(AgentProcess(task: task), for: task)

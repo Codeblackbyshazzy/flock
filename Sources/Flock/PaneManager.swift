@@ -41,6 +41,7 @@ class PaneManager {
     // MARK: - Pane lifecycle
 
     func addPane(type: PaneType, workingDirectory: String? = nil) {
+        assert(Thread.isMainThread, "PaneManager must be accessed from main thread")
         guard type != .markdown else {
             assertionFailure("Use openMarkdownFile(_:) to create markdown panes.")
             return
@@ -55,6 +56,7 @@ class PaneManager {
     }
 
     func closePane(at index: Int) {
+        assert(Thread.isMainThread, "PaneManager must be accessed from main thread")
         guard index >= 0, index < panes.count else { return }
         closeFindBar()
         let pane = panes[index]
@@ -121,6 +123,7 @@ class PaneManager {
     }
 
     func closeTab(at tabIndex: Int) {
+        assert(Thread.isMainThread, "PaneManager must be accessed from main thread")
         guard tabIndex >= 0, tabIndex < tabNodes.count else { return }
         tabBar?.animateTabClose(at: tabIndex)
         let leaves = tabNodes[tabIndex].allLeaves
@@ -173,6 +176,7 @@ class PaneManager {
     }
 
     func focusPane(at index: Int) {
+        assert(Thread.isMainThread, "PaneManager must be accessed from main thread")
         guard index >= 0, index < panes.count else { return }
         if activePaneIndex >= 0, activePaneIndex < panes.count {
             panes[activePaneIndex].isFocused = false

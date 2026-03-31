@@ -63,6 +63,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Clean up stale shell temp dirs from crashed sessions
         ShellEnhancer.cleanupStale()
 
+        // Clean up stale changelog temp files from crashed sessions
+        let tmpDir = NSTemporaryDirectory()
+        if let tmpContents = try? FileManager.default.contentsOfDirectory(atPath: tmpDir) {
+            let myPid = ProcessInfo.processInfo.processIdentifier
+            for file in tmpContents where file.hasPrefix("flock-changelog-") && file.hasSuffix(".txt") {
+                if let pid = Int32(file.dropFirst("flock-changelog-".count).dropLast(".txt".count)),
+                   pid != myPid, kill(pid, 0) != 0 {
+                    try? FileManager.default.removeItem(atPath: tmpDir + "/" + file)
+                }
+            }
+        }
+
         // Click-to-focus
         clickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
             self?.paneManager.handleClick(event: event)
