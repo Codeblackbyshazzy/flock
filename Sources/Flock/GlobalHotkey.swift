@@ -15,16 +15,24 @@ class GlobalHotkeyManager {
         let settings = Settings.shared
         self.keyCode = settings.globalHotkeyKeyCode
         self.modifiers = NSEvent.ModifierFlags(rawValue: settings.globalHotkeyModifiers)
-        register()
+        self.isEnabled = settings.globalHotkeyEnabled
+        if isEnabled {
+            register()
+        }
 
         NotificationCenter.default.addObserver(forName: Settings.didChange, object: nil, queue: .main) { [weak self] note in
             guard let self, let key = note.userInfo?["key"] as? String else { return }
             if key == "globalHotkeyEnabled" {
                 self.isEnabled = Settings.shared.globalHotkeyEnabled
+                if self.isEnabled {
+                    self.register()
+                } else {
+                    self.unregister()
+                }
             } else if key == "globalHotkeyKeyCode" || key == "globalHotkeyModifiers" {
                 self.keyCode = Settings.shared.globalHotkeyKeyCode
                 self.modifiers = NSEvent.ModifierFlags(rawValue: Settings.shared.globalHotkeyModifiers)
-                self.register()
+                if self.isEnabled { self.register() }
             }
         }
     }

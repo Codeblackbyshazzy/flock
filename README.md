@@ -4,7 +4,7 @@
 
 # flock
 
-[![macOS](https://img.shields.io/badge/macOS-14%2B-blue)](https://github.com/Divagation/flock/releases)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://github.com/Divagation/flock/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![GitHub release](https://img.shields.io/github/v/release/Divagation/flock)](https://github.com/Divagation/flock/releases/latest)
 [![GitHub stars](https://img.shields.io/github/stars/Divagation/flock)](https://github.com/Divagation/flock/stargazers)

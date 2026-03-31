@@ -61,6 +61,10 @@ final class WrenCompressor {
         do {
             try proc.run()
         } catch {
+            inputPipe.fileHandleForReading.closeFile()
+            inputPipe.fileHandleForWriting.closeFile()
+            outputPipe.fileHandleForReading.closeFile()
+            outputPipe.fileHandleForWriting.closeFile()
             return nil
         }
 

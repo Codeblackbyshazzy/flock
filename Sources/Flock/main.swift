@@ -10,6 +10,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     var hotkeyManager: GlobalHotkeyManager?
     private var clickMonitor: Any?
     private var focusObserver: Any?
+    private var settingsObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Notifications
@@ -48,10 +49,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             UsageTracker.shared.start()
         }
 
-        // Global hotkey
-        if Settings.shared.globalHotkeyEnabled {
-            hotkeyManager = GlobalHotkeyManager(window: mainWindow)
-        }
+        // Global hotkey -- always create so it can respond to settings changes
+        hotkeyManager = GlobalHotkeyManager(window: mainWindow)
 
         // Post-update changelog tab (before update check so it doesn't stack with the alert)
         let previousVersion = Settings.shared.lastRunVersion
@@ -80,9 +79,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.activate(ignoringOtherApps: true)
             }
         }
+
+        // React to settings changes at runtime
+        settingsObserver = NotificationCenter.default.addObserver(forName: Settings.didChange,
+                                               object: nil, queue: .main) { [weak self] note in
+            guard let key = note.userInfo?["key"] as? String else { return }
+            if key == "showUsageTracker" {
+                if Settings.shared.showUsageTracker {
+                    UsageTracker.shared.start()
+                } else {
+                    UsageTracker.shared.stop()
+                }
+                self?.paneManager.statusBar?.update()
+            }
+        }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        // Clean up event monitors
+        if let monitor = clickMonitor { NSEvent.removeMonitor(monitor); clickMonitor = nil }
+        if let observer = focusObserver { NotificationCenter.default.removeObserver(observer); focusObserver = nil }
+        if let observer = settingsObserver { NotificationCenter.default.removeObserver(observer); settingsObserver = nil }
+
         paneManager.saveSession()
         paneManager.panes.forEach { $0.shutdown() }
         AgentRunner.shared.cancelAll()

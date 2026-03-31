@@ -78,6 +78,7 @@ class UsageTracker {
     private init() {}
 
     func start() {
+        stop()
         limits = loadLimits()
         if limits.available {
             NotificationCenter.default.post(name: UsageTracker.didUpdate, object: nil)

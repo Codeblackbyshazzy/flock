@@ -190,8 +190,8 @@ final class UpdateChecker {
         let response = alert.runModal()
         if response == .alertFirstButtonReturn {
             if let url = URL(string: release.url),
-               let host = url.host,
-               host.hasSuffix("github.com") {
+               let scheme = url.scheme,
+               scheme == "https" {
                 NSWorkspace.shared.open(url)
             }
         }
