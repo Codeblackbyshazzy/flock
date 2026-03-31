@@ -4,14 +4,14 @@
 
 # flock
 
-[![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://github.com/Divagation/flock/releases)
+[![macOS](https://img.shields.io/badge/macOS-13%2B-blue)](https://github.com/baahaus/flock/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![GitHub release](https://img.shields.io/github/v/release/Divagation/flock)](https://github.com/Divagation/flock/releases/latest)
-[![GitHub stars](https://img.shields.io/github/stars/Divagation/flock)](https://github.com/Divagation/flock/stargazers)
+[![GitHub release](https://img.shields.io/github/v/release/baahaus/flock)](https://github.com/baahaus/flock/releases/latest)
+[![GitHub stars](https://img.shields.io/github/stars/baahaus/flock)](https://github.com/baahaus/flock/stargazers)
 
 **let your agents loose.**
 
-[divagation.github.io/flock](https://divagation.github.io/flock/)
+[baahaus.github.io/flock](https://baahaus.github.io/flock/)
 
 flock is a tiny, beautiful macOS app that lets you run as many Claude Code sessions as you want, all at once, all in one window. it also gives you shell panes and editable markdown panes alongside them. watch them think, read, edit, and build in real time. it's like having a team of programmers that never sleeps.
 
@@ -25,7 +25,7 @@ you open flock. you press `⌘T` a few times. suddenly four claudes are working 
 
 ## get it
 
-grab the `.pkg` installer or `.zip` from [releases](https://github.com/Divagation/flock/releases) and you're done.
+grab the `.pkg` installer or `.zip` from [releases](https://github.com/baahaus/flock/releases) and you're done.
 
 <br>
 
@@ -63,7 +63,7 @@ flock has a built-in memory system (`⌘⇧M`) that captures task summaries and 
 
 ### wren compression
 
-toggle on prompt compression in preferences and flock runs your messages through [wren](https://github.com/Divagation/wren) before sending. compresses prompts 50-80%, preserving meaning while saving tokens. works on paste in terminal panes and message input in agent mode.
+toggle on prompt compression in preferences and flock runs your messages through [wren](https://github.com/baahaus/wren) before sending. compresses prompts 50-80%, preserving meaning while saving tokens. works on paste in terminal panes and message input in agent mode.
 
 ### usage tracking
 
@@ -124,7 +124,7 @@ flock is keyboard-first. your hands never leave the keys.
 you'll need xcode (swift 5.9+).
 
 ```bash
-git clone https://github.com/Divagation/flock.git
+git clone https://github.com/baahaus/flock.git
 cd flock
 ./build.sh
 ```
@@ -135,7 +135,7 @@ that's it. app goes to `/Applications`, cli goes to `flock`.
 
 ## under the hood
 
-native swift. no electron. terminal panes are powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), and markdown panes are native editable text views that autosave to disk. agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. prompt compression runs through [wren](https://github.com/Divagation/wren), a LoRA fine-tuned model on Apple Silicon via MLX. it's fast because it's not pretending to be a website.
+native swift. no electron. terminal panes are powered by [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), and markdown panes are native editable text views that autosave to disk. agent mode talks to claude code over `stream-json` and parses every event in real time to build the timelines and kanban board. prompt compression runs through [wren](https://github.com/baahaus/wren), a LoRA fine-tuned model on Apple Silicon via MLX. it's fast because it's not pretending to be a website.
 
 <br>
 
@@ -146,5 +146,5 @@ a flock of claudes. working together. that's it. that's the name.
 <br>
 
 <p align="center">
-  <sub>made by <a href="https://github.com/Divagation">divagation</a></sub>
+  <sub>made by <a href="https://github.com/baahaus">baahaus</a></sub>
 </p>

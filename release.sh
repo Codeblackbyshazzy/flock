@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 # ─── Config ───
 APP_NAME="Flock"
 BUNDLE="Flock.app"
-REPO="Divagation/flock"
+REPO="baahaus/flock"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Brandon Anderson (U74MP7DDQC)}"
 INSTALLER_IDENTITY="${INSTALLER_IDENTITY:-Developer ID Installer: Brandon Anderson (U74MP7DDQC)}"
 NOTARIZE_PROFILE="flock-notarize"
@@ -153,7 +153,7 @@ echo "Updating version.json..."
 cat > docs/version.json <<VJEOF
 {
   "version": "${VERSION}",
-  "url": "https://divagation.github.io/flock/thanks.html",
+  "url": "https://baahaus.github.io/flock/thanks.html",
   "notes": "Flock v${VERSION} is available. Visit the download page to get the latest .pkg installer."
 }
 VJEOF

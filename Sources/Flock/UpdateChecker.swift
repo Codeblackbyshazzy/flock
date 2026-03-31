@@ -4,7 +4,7 @@ final class UpdateChecker {
     static let shared = UpdateChecker()
     static let updateAvailable = Notification.Name("FlockUpdateAvailable")
 
-    private let versionURL = URL(string: "https://divagation.github.io/flock/version.json")!
+    private let versionURL = URL(string: "https://baahaus.github.io/flock/version.json")!
     private var hasCheckedThisLaunch = false
 
     struct Release: Decodable {

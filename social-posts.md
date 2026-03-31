@@ -21,8 +21,8 @@ other stuff: 7 themes, command palette, broadcast mode (type once into all panes
 
 free, MIT licensed, signed and notarized.
 
-landing page: https://divagation.github.io/flock/
-github: https://github.com/Divagation/flock
+landing page: https://baahaus.github.io/flock/
+github: https://github.com/baahaus/flock
 
 happy to answer questions about the architecture or any of the gnarlier swift/appkit problems (tab dragging with event-tracking loops, CALayer rendering order, etc).
 
@@ -30,7 +30,7 @@ happy to answer questions about the architecture or any of the gnarlier swift/ap
 
 ## 2. X/Twitter
 
-> built a native macos app for running parallel claude code sessions. split panes, agent kanban, prompt compression, 7 themes. swift/appkit, no electron. free and open source. launching on product hunt tomorrow https://divagation.github.io/flock/
+> built a native macos app for running parallel claude code sessions. split panes, agent kanban, prompt compression, 7 themes. swift/appkit, no electron. free and open source. launching on product hunt tomorrow https://baahaus.github.io/flock/
 
 <!-- 271 chars -->
 
@@ -54,8 +54,8 @@ it also has built-in prompt compression via wren (a small LoRA model) that cuts 
 
 it's free, open source (MIT), native swift. no electron. signed and notarized so macos doesn't complain.
 
-github: https://github.com/Divagation/flock
-landing page: https://divagation.github.io/flock/
+github: https://github.com/baahaus/flock
+landing page: https://baahaus.github.io/flock/
 launching on product hunt tomorrow: will drop the link in comments when it's live
 
 curious what other workflows people are running with claude code that would benefit from parallelism.
