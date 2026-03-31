@@ -21,6 +21,11 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.3", date: "2026-03-30", changes: [
+            "New watercolor flock-of-birds logo",
+            "Transparent icon background across all pages",
+            "Cache-busted icons for immediate update visibility",
+        ]),
         ChangelogEntry(version: "0.9.2", date: "2026-03-30", changes: [
             "Fixed SIGPIPE crash when writing to terminated process pipes",
             "Fixed AppleScript injection vulnerability in notification pane names",
@@ -206,5 +211,5 @@ final class UpdateChecker {
 
 // Fallback version constant (used when not running as .app bundle)
 enum FlockVersion {
-    static let current = "0.9.2"
+    static let current = "0.9.3"
 }
