@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flock support</title>
+  <meta name="description" content="Support options for Flock.">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F4ED;
+      --bg-alt: #E8E3DA;
+      --bg-warm: #FAF7F0;
+      --ink: #2C2520;
+      --ink-soft: #6A6560;
+      --accent: #9B8574;
+      --border: #D4CEC3;
+      --blue: #5B7FA5;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Silkscreen', cursive;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.018) 1px, transparent 1px);
+      background-size: 8px 8px;
+      pointer-events: none;
+      z-index: 9998;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(247, 244, 237, 0.94);
+      border-bottom: 2px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .topbar a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .topbar .brand {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.72rem;
+    }
+    .wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    .hero h1 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      display: inline-block;
+      border: 2px solid var(--blue);
+      color: var(--blue);
+      padding: 4px 10px;
+      font-family: 'VT323', monospace;
+      font-size: 1.05rem;
+      margin-bottom: 1rem;
+    }
+    .hero p,
+    .card p,
+    .card li,
+    .footer {
+      font-family: 'VT323', monospace;
+      font-size: 1.28rem;
+      line-height: 1.55;
+      color: var(--ink-soft);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-top: 30px;
+    }
+    .card {
+      background: var(--bg-warm);
+      border: 2px solid var(--border);
+      padding: 22px;
+      box-shadow: 6px 6px 0 rgba(0,0,0,0.05);
+    }
+    .card h2 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.68rem;
+      line-height: 1.8;
+      margin-bottom: 12px;
+    }
+    .card a {
+      color: var(--ink);
+    }
+    .card ul {
+      padding-left: 20px;
+    }
+    .card li + li {
+      margin-top: 8px;
+    }
+    .footer {
+      margin-top: 34px;
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="index.html">flock</a>
+    <a href="privacy.html">privacy</a>
+  </div>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="badge">support</div>
+      <h1>if flock breaks,<br>start here.</h1>
+      <p>The fastest path is GitHub. Use the links below so bug reports land where release notes, fixes, and follow-ups already live.</p>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Bug Reports</h2>
+        <p>Open an issue on <a href="https://github.com/baahaus/flock/issues">GitHub Issues</a>. Include what you expected, what happened instead, and whether the problem is in a Claude pane, shell pane, markdown pane, or agent mode.</p>
+      </article>
+
+      <article class="card">
+        <h2>Docs</h2>
+        <p>Check the <a href="documentation.html">documentation</a> for install details, shortcuts, pane behavior, memory, updates, and settings.</p>
+      </article>
+
+      <article class="card">
+        <h2>Downloads</h2>
+        <p>Latest signed builds live on <a href="https://github.com/baahaus/flock/releases/latest">GitHub Releases</a>. The direct installer link is <a href="https://github.com/baahaus/flock/releases/latest/download/Flock-mac.pkg">Flock-mac.pkg</a>.</p>
+      </article>
+
+      <article class="card">
+        <h2>Useful Details</h2>
+        <ul>
+          <li>your macOS version</li>
+          <li>your Flock version</li>
+          <li>whether Claude Code CLI is installed and logged in</li>
+          <li>steps to reproduce the issue</li>
+          <li>screenshots or terminal output if relevant</li>
+        </ul>
+      </article>
+    </section>
+
+    <p class="footer">Need privacy details too? Read the <a href="privacy.html">privacy page</a>. Want the product overview instead? Go back to <a href="index.html">home</a>.</p>
+  </main>
+</body>
+</html>

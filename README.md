@@ -27,6 +27,8 @@ you open flock. you press `⌘T` a few times. suddenly four claudes are working 
 
 grab the `.pkg` installer or `.zip` from [releases](https://github.com/baahaus/flock/releases) and you're done.
 
+support lives on [GitHub issues](https://github.com/baahaus/flock/issues). privacy details live at [baahaus.github.io/flock/privacy.html](https://baahaus.github.io/flock/privacy.html).
+
 <br>
 
 ## what you get

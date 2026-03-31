@@ -7,6 +7,7 @@ cd "$(dirname "$0")"
 APP_NAME="Flock"
 BUNDLE="Flock.app"
 REPO="baahaus/flock"
+VERSION_FILE="VERSION"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Brandon Anderson (U74MP7DDQC)}"
 INSTALLER_IDENTITY="${INSTALLER_IDENTITY:-Developer ID Installer: Brandon Anderson (U74MP7DDQC)}"
 NOTARIZE_PROFILE="flock-notarize"
@@ -19,7 +20,21 @@ if [ -z "$VERSION" ]; then
   exit 1
 fi
 
+update_version_metadata() {
+  printf '%s\n' "$VERSION" > "$VERSION_FILE"
+
+  /usr/bin/perl -0pi -e 's{(<key>CFBundleVersion</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g; s{(<key>CFBundleShortVersionString</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g' \
+    Info.plist
+
+  /usr/bin/perl -0pi -e 's/static let current = "[^"]*"/static let current = "'"$VERSION"'"/' \
+    Sources/Flock/UpdateChecker.swift
+
+  /usr/bin/perl -0pi -e 's{(<div class="version-badge">)v[^<]+(</div>)}{$1v'"$VERSION"'$2}' \
+    docs/documentation.html
+}
+
 echo "Building Flock v${VERSION}..."
+update_version_metadata
 
 # ─── Build ───
 swift build -c release 2>&1
@@ -34,8 +49,7 @@ cp AppIcon.icns "$BUNDLE/Contents/Resources/AppIcon.icns"
 cp Resources/zsh-autosuggestions.zsh "$BUNDLE/Contents/Resources/zsh-autosuggestions.zsh"
 
 # Write Info.plist from source with injected version
-sed -e "s/<string>0\.[0-9]*\.[0-9]*<\/string>/<string>${VERSION}<\/string>/g" \
-  Info.plist > "$BUNDLE/Contents/Info.plist"
+cp Info.plist "$BUNDLE/Contents/Info.plist"
 
 # ─── Sign with Developer ID + hardened runtime ───
 codesign --force --sign "$SIGNING_IDENTITY" \
@@ -55,6 +69,7 @@ echo "Signature: valid"
 
 # ─── Create ZIP for distribution ───
 ZIP_NAME="Flock-${VERSION}-mac.zip"
+LATEST_ZIP_NAME="Flock-mac.zip"
 rm -f "$ZIP_NAME"
 ditto -c -k --sequesterRsrc --keepParent "$BUNDLE" "$ZIP_NAME"
 
@@ -85,6 +100,7 @@ xcrun stapler staple "$BUNDLE"
 # Re-create ZIP with stapled app
 rm -f "$ZIP_NAME"
 ditto -c -k --sequesterRsrc --keepParent "$BUNDLE" "$ZIP_NAME"
+cp "$ZIP_NAME" "$LATEST_ZIP_NAME"
 SHA256=$(shasum -a 256 "$ZIP_NAME" | awk '{print $1}')
 
 echo ""
@@ -93,6 +109,7 @@ echo "SHA256: $SHA256"
 
 # ─── Build .pkg installer ───
 PKG_NAME="Flock-${VERSION}-mac.pkg"
+LATEST_PKG_NAME="Flock-mac.pkg"
 echo ""
 echo "Building installer package..."
 
@@ -120,6 +137,7 @@ if echo "$PKG_SUBMIT" | grep -q "status: Invalid"; then
 fi
 
 xcrun stapler staple "$PKG_NAME"
+cp "$PKG_NAME" "$LATEST_PKG_NAME"
 echo "Built: $PKG_NAME (notarized + stapled)"
 
 # ─── Create GitHub Release ───
@@ -139,7 +157,7 @@ Download the \`.pkg\` installer or \`${ZIP_NAME}\`, unzip, and drag to Applicati
 ${SHA256}  ${ZIP_NAME}
 \`\`\`"
 
-gh release create "v${VERSION}" "$ZIP_NAME" "$PKG_NAME" \
+gh release create "v${VERSION}" "$ZIP_NAME" "$PKG_NAME" "$LATEST_ZIP_NAME" "$LATEST_PKG_NAME" \
   --repo "$REPO" \
   --title "Flock v${VERSION}" \
   --notes "$NOTES"
@@ -158,13 +176,9 @@ cat > docs/version.json <<VJEOF
 }
 VJEOF
 
-# Also update the fallback version constant in source
-sed -i '' "s/static let current = \"[^\"]*\"/static let current = \"${VERSION}\"/" \
-  Sources/Flock/UpdateChecker.swift
-
 # ─── Push docs/ to deploy auto-updater ───
 echo "Pushing docs/ to GitHub Pages..."
-git add docs/version.json
+git add "$VERSION_FILE" Info.plist Sources/Flock/UpdateChecker.swift docs/version.json docs/documentation.html
 git commit -m "Update version.json for v${VERSION}" --allow-empty
 git push origin main
 

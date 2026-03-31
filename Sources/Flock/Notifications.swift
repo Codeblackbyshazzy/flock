@@ -58,28 +58,7 @@ enum FlockNotifications {
                 trigger: nil
             )
             UNUserNotificationCenter.current().add(request)
-        } else {
-            sendOsascript(title: title, message: body)
         }
-    }
-
-    private static func escapeAppleScript(_ s: String) -> String {
-        // Strip control characters (newlines, tabs, etc.) to prevent injection,
-        // then escape backslashes and quotes for AppleScript string literals
-        let cleaned = s.unicodeScalars.filter { $0.value >= 32 && $0.value != 127 }
-        return String(cleaned)
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-    }
-
-    private static func sendOsascript(title: String, message: String) {
-        let escapedMsg = escapeAppleScript(message)
-        let escapedTitle = escapeAppleScript(title)
-        let script = "display notification \"\(escapedMsg)\" with title \"\(escapedTitle)\""
-        let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        proc.arguments = ["-e", script]
-        try? proc.run()
     }
 
     private static func formatDuration(_ duration: TimeInterval?) -> String {

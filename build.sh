@@ -3,6 +3,12 @@ set -e
 
 cd "$(dirname "$0")"
 
+if [ ! -f VERSION ]; then
+  echo "Missing VERSION file"
+  exit 1
+fi
+
+VERSION="$(tr -d '[:space:]' < VERSION)"
 SIGNING_IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Brandon Anderson (U74MP7DDQC)}"
 
 echo "Building Flock..."
@@ -16,7 +22,8 @@ mkdir -p "$APP/Contents/Resources"
 cp .build/release/Flock "$APP/Contents/MacOS/Flock"
 cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/zsh-autosuggestions.zsh "$APP/Contents/Resources/zsh-autosuggestions.zsh"
-cp Info.plist "$APP/Contents/Info.plist"
+/usr/bin/perl -0pe 's{(<key>CFBundleVersion</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g; s{(<key>CFBundleShortVersionString</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g' \
+  Info.plist > "$APP/Contents/Info.plist"
 
 # Sign with Developer ID + hardened runtime
 codesign --force --sign "$SIGNING_IDENTITY" \

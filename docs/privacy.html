@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>flock privacy</title>
+  <meta name="description" content="Privacy details for Flock.">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #F7F4ED;
+      --bg-alt: #E8E3DA;
+      --bg-warm: #FAF7F0;
+      --ink: #2C2520;
+      --ink-soft: #6A6560;
+      --accent: #9B8574;
+      --border: #D4CEC3;
+      --green: #5B9A6B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Silkscreen', cursive;
+      background: var(--bg);
+      color: var(--ink);
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.018) 1px, transparent 1px);
+      background-size: 8px 8px;
+      pointer-events: none;
+      z-index: 9998;
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      background: rgba(247, 244, 237, 0.94);
+      border-bottom: 2px solid var(--border);
+      backdrop-filter: blur(8px);
+    }
+    .topbar a {
+      color: var(--ink);
+      text-decoration: none;
+    }
+    .topbar .brand {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.72rem;
+    }
+    .wrap {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    .hero {
+      margin-bottom: 40px;
+    }
+    .hero h1 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      line-height: 1.7;
+      margin-bottom: 1rem;
+    }
+    .hero p,
+    .content p,
+    .content li {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      line-height: 1.55;
+      color: var(--ink-soft);
+    }
+    .badge {
+      display: inline-block;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+      padding: 4px 10px;
+      font-family: 'VT323', monospace;
+      font-size: 1.05rem;
+      margin-bottom: 1rem;
+    }
+    .section {
+      margin-top: 28px;
+      padding: 24px;
+      background: var(--bg-warm);
+      border: 2px solid var(--border);
+      box-shadow: 6px 6px 0 rgba(0,0,0,0.05);
+    }
+    .section h2 {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.72rem;
+      line-height: 1.8;
+      margin-bottom: 14px;
+    }
+    .section ul {
+      padding-left: 20px;
+    }
+    .section li + li,
+    .section p + p {
+      margin-top: 10px;
+    }
+    .callout {
+      margin-top: 28px;
+      padding: 18px 20px;
+      border: 2px dashed var(--accent);
+      background: rgba(91, 154, 107, 0.08);
+    }
+    .callout strong {
+      color: var(--ink);
+    }
+    .footer {
+      margin-top: 36px;
+      font-family: 'VT323', monospace;
+      font-size: 1.15rem;
+      color: var(--ink-soft);
+    }
+    .footer a,
+    .section a,
+    .hero a {
+      color: var(--ink);
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="brand" href="index.html">flock</a>
+    <a href="support.html">support</a>
+  </div>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="badge">privacy</div>
+      <h1>simple rules.<br>minimal data.</h1>
+      <p>Flock does not run its own analytics, ads, or telemetry service. It is a native macOS app that launches tools you already use and stores its own state locally on your Mac.</p>
+    </section>
+
+    <section class="content">
+      <div class="section">
+        <h2>What Flock Stores Locally</h2>
+        <ul>
+          <li>window layout, pane state, preferences, and restore data</li>
+          <li>memory entries in <code>~/Library/Application Support/Flock/memories.json</code></li>
+          <li>optional `.flock-context.md` files in working directories when memory is enabled</li>
+          <li>optional usage snapshots in `UserDefaults` for the status bar tracker</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>What Can Touch The Network</h2>
+        <ul>
+          <li>Claude panes run your installed Claude Code CLI. Its network activity is handled by that CLI and your provider account, not by a Flock backend.</li>
+          <li>Auto-update checks fetch `version.json` from `baahaus.github.io/flock` if you leave update checks enabled.</li>
+          <li>The optional usage tracker can call Anthropic's OAuth usage endpoint to show plan utilization when you enable it.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>What Flock Does Not Do</h2>
+        <ul>
+          <li>no analytics SDKs</li>
+          <li>no crash reporting service</li>
+          <li>no ad network</li>
+          <li>no separate Flock account</li>
+          <li>no remote storage for your memories or session state</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Permissions</h2>
+        <p>Flock can ask for notification permission so it can alert you when agents finish. File access happens through the terminals and file pickers you use inside the app. If you turn on the global hotkey, Flock listens for that shortcut at the macOS event level.</p>
+      </div>
+
+      <div class="callout">
+        <p><strong>Questions?</strong> Use the <a href="support.html">support page</a> or open an issue on <a href="https://github.com/baahaus/flock/issues">GitHub</a>.</p>
+      </div>
+
+      <p class="footer">Last updated March 31, 2026. <a href="index.html">home</a> &middot; <a href="documentation.html">docs</a> &middot; <a href="support.html">support</a></p>
+    </section>
+  </main>
+</body>
+</html>

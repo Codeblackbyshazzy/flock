@@ -10,9 +10,9 @@
   <key>CFBundleExecutable</key>
   <string>Flock</string>
   <key>CFBundleVersion</key>
-  <string>0.9.1</string>
+  <string>0.9.3</string>
   <key>CFBundleShortVersionString</key>
-  <string>0.9.1</string>
+  <string>0.9.3</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleIconFile</key>
@@ -31,7 +31,5 @@
   <string>Flock terminal sessions need file access.</string>
   <key>NSRemovableVolumesUsageDescription</key>
   <string>Flock terminal sessions need file access.</string>
-  <key>NSAppleEventsUsageDescription</key>
-  <string>Flock uses AppleScript to display notifications.</string>
 </dict>
 </plist>

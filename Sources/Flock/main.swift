@@ -15,7 +15,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Notifications
         FlockNotifications.setup()
-        FlockNotifications.requestPermission()
 
         // Load saved theme
         let savedId = Settings.shared.themeId
