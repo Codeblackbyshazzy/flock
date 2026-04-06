@@ -39,6 +39,7 @@
       background: var(--bg);
       color: var(--ink);
       overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* === PIXEL GRID OVERLAY === */
@@ -68,6 +69,11 @@
       );
       pointer-events: none;
       z-index: 9999;
+    }
+
+    /* Hide overlays on mobile -- they interfere with scrollbar rendering */
+    @media (max-width: 768px) {
+      body::before, body::after { display: none; }
     }
 
     /* ============================================

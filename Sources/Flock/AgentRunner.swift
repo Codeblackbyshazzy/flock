@@ -14,6 +14,11 @@ final class AgentProcess {
     private let resumeSessionId: String?
     private let resumeMessage: String?
 
+    /// Watchdog: kills the process if no output arrives within this interval.
+    private static let pipeTimeoutSeconds: TimeInterval = 300 // 5 minutes
+    private var watchdogTimer: DispatchSourceTimer?
+    private var lastOutputTime = Date()
+
     var onEvent: ((StreamJsonEvent) -> Void)?
     var onComplete: (((isError: Bool, text: String?, costUsd: Double?)) -> Void)?
 
@@ -50,11 +55,13 @@ final class AgentProcess {
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
+            self?.lastOutputTime = Date()
             self?.parserQueue.async { self?.handleData(data) }
         }
 
         proc.terminationHandler = { [weak self] process in
             guard let self = self else { return }
+            self.stopWatchdog()
             self.outputPipe.fileHandleForReading.readabilityHandler = nil
             // Drain remaining data on the serial queue to avoid racing with readabilityHandler
             self.parserQueue.async { [weak self] in
@@ -82,6 +89,7 @@ final class AgentProcess {
 
         do {
             try proc.run()
+            startWatchdog()
         } catch {
             self.process = nil
             outputPipe.fileHandleForReading.closeFile()
@@ -105,10 +113,33 @@ final class AgentProcess {
     func terminate() {
         // Prevent the terminationHandler from calling onComplete after explicit terminate
         onComplete = nil
+        stopWatchdog()
         outputPipe.fileHandleForReading.readabilityHandler = nil
         if let proc = process, proc.isRunning {
             proc.terminate()
         }
+    }
+
+    // MARK: - Watchdog
+
+    private func startWatchdog() {
+        let timer = DispatchSource.makeTimerSource(queue: parserQueue)
+        timer.schedule(deadline: .now() + 60, repeating: 60)
+        timer.setEventHandler { [weak self] in
+            guard let self = self,
+                  let proc = self.process, proc.isRunning else { return }
+            let elapsed = Date().timeIntervalSince(self.lastOutputTime)
+            if elapsed >= Self.pipeTimeoutSeconds {
+                proc.terminate()
+            }
+        }
+        timer.resume()
+        watchdogTimer = timer
+    }
+
+    private func stopWatchdog() {
+        watchdogTimer?.cancel()
+        watchdogTimer = nil
     }
 
     // MARK: - Private
