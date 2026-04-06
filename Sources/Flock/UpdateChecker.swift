@@ -21,6 +21,11 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.4", date: "2026-04-06", changes: [
+            "Fixed 13 thread safety, process cleanup, and error handling issues",
+            "Launch docs and release hardening",
+            "Fixed Info.plist corruption in release pipeline",
+        ]),
         ChangelogEntry(version: "0.9.3", date: "2026-03-30", changes: [
             "New watercolor flock-of-birds logo",
             "Transparent icon background across all pages",
