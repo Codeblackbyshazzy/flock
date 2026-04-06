@@ -241,7 +241,7 @@ final class ClaudeOutputParser {
     private func containsBraille(_ text: String) -> Bool {
         for c in text {
             let v = c.unicodeScalars.first?.value ?? 0
-            if v >= 0x280B && v <= 0x283F {  // braille pattern range
+            if v >= 0x2800 && v <= 0x28FF {  // braille pattern range
                 return true
             }
         }

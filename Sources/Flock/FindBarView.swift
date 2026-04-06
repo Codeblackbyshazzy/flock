@@ -19,15 +19,14 @@ class FindBarView: NSView, NSTextFieldDelegate {
     func show() {
         isHidden = false
 
-        // Initial state: 20px above resting position, invisible
-        let restingY = frame.origin.y
+        // Animate from 20px above the stored resting position
         frame.origin.y = restingY - 20
         alphaValue = 0
 
         NSAnimationContext.runAnimationGroup({ ctx in
             ctx.duration = Theme.Anim.fast
             ctx.timingFunction = Theme.Anim.snappyTimingFunction
-            self.animator().frame.origin.y = restingY
+            self.animator().frame.origin.y = self.restingY
             self.animator().alphaValue = 1
         }, completionHandler: { [weak self] in
             guard let self else { return }
@@ -52,7 +51,6 @@ class FindBarView: NSView, NSTextFieldDelegate {
             self.animator().alphaValue = 0
         }, completionHandler: { [weak self] in
             self?.isHidden = true
-            self?.removeFromSuperview()
             if let tv { tv.window?.makeFirstResponder(tv) }
         })
     }
@@ -87,6 +85,7 @@ class FindBarView: NSView, NSTextFieldDelegate {
 
     // MARK: - State
 
+    private var restingY: CGFloat = 0
     private var currentTerm: String = ""
     private var lastFindSucceeded: Bool = false
     private var buttonTrackingAreas: [NSView: NSTrackingArea] = [:]
@@ -174,9 +173,10 @@ class FindBarView: NSView, NSTextFieldDelegate {
         super.viewDidMoveToSuperview()
         guard let sv = superview else { return }
         let barWidth = min(K.maxWidth, sv.bounds.width - 32)
+        restingY = K.topInset
         frame = NSRect(
             x: sv.bounds.width - barWidth - K.rightInset,
-            y: K.topInset,
+            y: restingY,
             width: barWidth,
             height: K.barHeight
         )

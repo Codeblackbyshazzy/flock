@@ -18,6 +18,7 @@ final class AgentProcess {
     private static let pipeTimeoutSeconds: TimeInterval = 300 // 5 minutes
     private var watchdogTimer: DispatchSourceTimer?
     private var lastOutputTime = Date()
+    private var terminated = false
 
     var onEvent: ((StreamJsonEvent) -> Void)?
     var onComplete: (((isError: Bool, text: String?, costUsd: Double?)) -> Void)?
@@ -55,8 +56,10 @@ final class AgentProcess {
         outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            self?.lastOutputTime = Date()
-            self?.parserQueue.async { self?.handleData(data) }
+            self?.parserQueue.async {
+                self?.lastOutputTime = Date()
+                self?.handleData(data)
+            }
         }
 
         proc.terminationHandler = { [weak self] process in
@@ -65,7 +68,7 @@ final class AgentProcess {
             self.outputPipe.fileHandleForReading.readabilityHandler = nil
             // Drain remaining data on the serial queue to avoid racing with readabilityHandler
             self.parserQueue.async { [weak self] in
-                guard let self = self else { return }
+                guard let self = self, !self.terminated else { return }
                 let remaining = self.outputPipe.fileHandleForReading.readDataToEndOfFile()
                 if !remaining.isEmpty {
                     self.handleData(remaining)
@@ -111,10 +114,13 @@ final class AgentProcess {
     // MARK: - Terminate
 
     func terminate() {
-        // Prevent the terminationHandler from calling onComplete after explicit terminate
+        // Prevent the terminationHandler from draining closed pipes or calling onComplete
+        terminated = true
         onComplete = nil
         stopWatchdog()
         outputPipe.fileHandleForReading.readabilityHandler = nil
+        outputPipe.fileHandleForReading.closeFile()
+        inputPipe.fileHandleForWriting.closeFile()
         if let proc = process, proc.isRunning {
             proc.terminate()
         }
@@ -217,6 +223,7 @@ final class AgentRunner {
 
     /// Resumes a conversation by spawning a new process with --resume.
     func resume(_ task: AgentTask, message: String) {
+        assert(Thread.isMainThread, "AgentRunner must be accessed from main thread")
         guard runningProcesses[task.id] == nil,
               let sessionId = task.sessionId else { return }
         wireAndLaunch(AgentProcess(task: task, resumeSessionId: sessionId, message: message), for: task)

@@ -68,12 +68,23 @@ final class WrenCompressor {
             return nil
         }
 
-        inputPipe.fileHandleForWriting.write(Data(text.utf8))
-        inputPipe.fileHandleForWriting.closeFile()
+        // Write stdin on a background thread to avoid deadlock when input exceeds pipe buffer
+        // (the child may block writing stdout while we block writing stdin)
+        let inputData = Data(text.utf8)
+        DispatchQueue.global(qos: .userInitiated).async {
+            inputPipe.fileHandleForWriting.write(inputData)
+            inputPipe.fileHandleForWriting.closeFile()
+        }
 
         // Read output BEFORE waiting for exit to avoid deadlock when output exceeds pipe buffer
         let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
         outputPipe.fileHandleForReading.closeFile()
+
+        // Timeout: kill if still running after 10 seconds
+        let deadline = DispatchTime.now() + .seconds(10)
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: deadline) {
+            if proc.isRunning { proc.terminate() }
+        }
 
         proc.waitUntilExit()
 

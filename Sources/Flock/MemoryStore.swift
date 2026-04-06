@@ -135,15 +135,25 @@ final class MemoryStore {
     }
 
     func update(_ entry: MemoryEntry, content: String) {
-        guard let idx = memories.firstIndex(where: { $0.id == entry.id }) else { return }
-        memories[idx].content = content
-        memories[idx].updatedAt = Date()
+        lock.lock()
+        guard let idx = _memories.firstIndex(where: { $0.id == entry.id }) else {
+            lock.unlock()
+            return
+        }
+        _memories[idx].content = content
+        _memories[idx].updatedAt = Date()
+        lock.unlock()
         didMutate()
     }
 
     func togglePin(_ entry: MemoryEntry) {
-        guard let idx = memories.firstIndex(where: { $0.id == entry.id }) else { return }
-        memories[idx].pinned.toggle()
+        lock.lock()
+        guard let idx = _memories.firstIndex(where: { $0.id == entry.id }) else {
+            lock.unlock()
+            return
+        }
+        _memories[idx].pinned.toggle()
+        lock.unlock()
         didMutate()
     }
 

@@ -23,8 +23,9 @@ fi
 update_version_metadata() {
   printf '%s\n' "$VERSION" > "$VERSION_FILE"
 
-  /usr/bin/perl -0pi -e 's{(<key>CFBundleVersion</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g; s{(<key>CFBundleShortVersionString</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g' \
-    Info.plist
+  plutil -replace CFBundleVersion -string "$VERSION" Info.plist
+  plutil -replace CFBundleShortVersionString -string "$VERSION" Info.plist
+  plutil -lint Info.plist || { echo "Info.plist is invalid!"; exit 1; }
 
   /usr/bin/perl -0pi -e 's/static let current = "[^"]*"/static let current = "'"$VERSION"'"/' \
     Sources/Flock/UpdateChecker.swift

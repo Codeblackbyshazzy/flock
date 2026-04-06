@@ -55,7 +55,15 @@ class FlockTerminalView: LocalProcessTerminalView {
         }
 
         WrenCompressor.shared.compress(text) { [weak self] compressed, _ in
-            self?.send(txt: compressed)
+            guard let self else { return }
+            // Wrap in bracketed paste sequences if the terminal expects them
+            if self.terminal.bracketedPasteMode {
+                self.send(data: EscapeSequences.bracketedPasteStart[0...])
+            }
+            self.send(txt: compressed)
+            if self.terminal.bracketedPasteMode {
+                self.send(data: EscapeSequences.bracketedPasteEnd[0...])
+            }
         }
     }
 

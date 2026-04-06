@@ -3,6 +3,7 @@ import AppKit
 class GlobalHotkeyManager {
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var settingsObserver: NSObjectProtocol?
     private weak var window: NSWindow?
 
     var keyCode: UInt16 = 50  // backtick
@@ -20,7 +21,7 @@ class GlobalHotkeyManager {
             register()
         }
 
-        NotificationCenter.default.addObserver(forName: Settings.didChange, object: nil, queue: .main) { [weak self] note in
+        settingsObserver = NotificationCenter.default.addObserver(forName: Settings.didChange, object: nil, queue: .main) { [weak self] note in
             guard let self, let key = note.userInfo?["key"] as? String else { return }
             if key == "globalHotkeyEnabled" {
                 self.isEnabled = Settings.shared.globalHotkeyEnabled
@@ -80,6 +81,7 @@ class GlobalHotkeyManager {
     }
 
     deinit {
+        if let obs = settingsObserver { NotificationCenter.default.removeObserver(obs) }
         unregister()
     }
 }

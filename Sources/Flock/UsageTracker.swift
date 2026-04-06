@@ -181,7 +181,9 @@ class UsageTracker {
             usage.totalTokens += input + output
 
             let p = pricing[model] ?? defaultPricing
-            usage.costUSD += Double(input) / 1_000_000 * p.input
+            // input_tokens includes cache tokens -- subtract them to avoid double-counting
+            let baseInput = max(0, input - cacheRead - cacheCreate)
+            usage.costUSD += Double(baseInput) / 1_000_000 * p.input
                            + Double(output) / 1_000_000 * p.output
                            + Double(cacheRead) / 1_000_000 * p.cacheRead
                            + Double(cacheCreate) / 1_000_000 * p.cacheCreate
@@ -281,8 +283,8 @@ class UsageTracker {
                 newLimits.sevenDayResetsAt = sevenDay["resets_at"] as? String
             }
 
-            let changed = newLimits != self?.limits
             DispatchQueue.main.async {
+                let changed = newLimits != self?.limits
                 self?.limits = newLimits
                 self?.saveLimits(newLimits)
                 if changed {

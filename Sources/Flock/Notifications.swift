@@ -4,7 +4,11 @@ import UserNotifications
 enum FlockNotifications {
     static let focusPaneRequested = Notification.Name("FlockFocusPaneRequested")
 
-    private static var useNative = false
+    private static var _useNative = false
+    private static var useNative: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _useNative }
+        set { lock.lock(); _useNative = newValue; lock.unlock() }
+    }
     /// Debounce: track last notification per pane to suppress duplicates
     private static var lastNotification: [String: (message: String, time: Date)] = [:]
     private static let debounceInterval: TimeInterval = 5.0
@@ -12,20 +16,17 @@ enum FlockNotifications {
 
     static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, _ in
-            DispatchQueue.main.async { useNative = granted }
+            useNative = granted
         }
     }
 
     static func setup() {
         // Check if we already have permission (e.g. from a previous launch)
         UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                if settings.authorizationStatus == .authorized {
-                    useNative = true
-                } else if settings.authorizationStatus == .notDetermined {
-                    // Auto-request on first launch
-                    requestPermission()
-                }
+            if settings.authorizationStatus == .authorized {
+                useNative = true
+            } else if settings.authorizationStatus == .notDetermined {
+                requestPermission()
             }
         }
     }

@@ -75,16 +75,16 @@ class Settings {
 
     var globalHotkeyKeyCode: UInt16 {
         get {
-            let v = defaults.integer(forKey: Key.globalHotkeyKeyCode.rawValue)
-            return v > 0 ? UInt16(v) : 50  // backtick
+            if defaults.object(forKey: Key.globalHotkeyKeyCode.rawValue) == nil { return 50 } // backtick
+            return UInt16(defaults.integer(forKey: Key.globalHotkeyKeyCode.rawValue))
         }
         set { defaults.set(Int(newValue), forKey: Key.globalHotkeyKeyCode.rawValue); post(.globalHotkeyKeyCode) }
     }
 
     var globalHotkeyModifiers: UInt {
         get {
-            let v = defaults.integer(forKey: Key.globalHotkeyModifiers.rawValue)
-            return v > 0 ? UInt(v) : NSEvent.ModifierFlags.control.rawValue
+            if defaults.object(forKey: Key.globalHotkeyModifiers.rawValue) == nil { return NSEvent.ModifierFlags.control.rawValue }
+            return UInt(defaults.integer(forKey: Key.globalHotkeyModifiers.rawValue))
         }
         set { defaults.set(Int(newValue), forKey: Key.globalHotkeyModifiers.rawValue); post(.globalHotkeyModifiers) }
     }

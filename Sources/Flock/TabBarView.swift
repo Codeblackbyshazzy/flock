@@ -219,13 +219,9 @@ class TabBarView: NSView, NSTextFieldDelegate {
     }
 
     /// Begin close animation for a tab index (called before the actual data is removed).
-    /// Uses a unique animation ID to avoid index-shift collisions during rapid closes.
-    private var closeAnimationCounter: Int = 0
     func animateTabClose(at index: Int) {
-        closeAnimationCounter += 1
-        let animId = closeAnimationCounter * 1000 + index
-        tabCloseProgress[animId] = 0.0
-        pendingCloseTabIndices.append(animId)
+        tabCloseProgress[index] = 0.0
+        pendingCloseTabIndices.append(index)
         startHoverAnimation()
     }
 

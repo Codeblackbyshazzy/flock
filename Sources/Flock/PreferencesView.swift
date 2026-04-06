@@ -32,7 +32,10 @@ class PreferencesView: NSView {
 
     // MARK: - Show
 
+    private static weak var currentPanel: NSPanel?
+
     static func show(on window: NSWindow) {
+        if currentPanel != nil { return }
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 480, height: 576),
             styleMask: [.titled, .closable],
@@ -47,6 +50,7 @@ class PreferencesView: NSView {
         view.panel = panel
         view.hostWindow = window
         panel.contentView = view
+        currentPanel = panel
 
         window.beginSheet(panel)
     }

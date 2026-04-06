@@ -251,6 +251,14 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
     override func layoutContent() {
         let pad: CGFloat = 8
         terminalView.frame = CGRect(x: pad, y: titleBarHeight, width: clipView.bounds.width - pad * 2, height: clipView.bounds.height - titleBarHeight - pad)
+
+        // Reposition change log overlay if visible
+        if let panel = changeLogView {
+            let h = panel.idealHeight()
+            let x = clipView.bounds.width - panel.panelWidth - 8
+            let y = clipView.bounds.height - h - 8
+            panel.frame = NSRect(x: x, y: y, width: panel.panelWidth, height: h)
+        }
     }
 
     // MARK: - LocalProcessTerminalViewDelegate

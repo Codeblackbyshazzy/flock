@@ -215,7 +215,7 @@ struct Theme {
     static var active: ColorTheme {
         get { _active }
         set {
-            let window = NSApp.windows.first
+            let window = NSApp.mainWindow ?? NSApp.keyWindow ?? NSApp.windows.first
             if let window {
                 crossDissolve(in: window, duration: 0.25)
             }
