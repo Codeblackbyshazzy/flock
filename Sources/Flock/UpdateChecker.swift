@@ -21,6 +21,15 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.5", date: "2026-04-06", changes: [
+            "Fixed cost tracker double-counting cache tokens",
+            "Fixed memory edits silently lost due to lock semantics",
+            "Tab close animation now works (was broken since launch)",
+            "Find bar no longer disappears permanently after first use",
+            "Fixed potential deadlock in Wren compression on large pastes",
+            "Fixed mobile scrollbar on landing page",
+            "17 total bug fixes from comprehensive audit",
+        ]),
         ChangelogEntry(version: "0.9.4", date: "2026-04-06", changes: [
             "Fixed 13 thread safety, process cleanup, and error handling issues",
             "Launch docs and release hardening",
