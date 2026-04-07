@@ -7,6 +7,9 @@ class FlockTerminalView: LocalProcessTerminalView {
     // Scroll-lock: track whether the user has scrolled away from the bottom
     private var isUserScrolledBack: Bool = false
 
+    // Typing detection: suppress activity indicator for keyboard echo
+    var lastUserInputTime: CFAbsoluteTime = 0
+
     override func scrollWheel(with event: NSEvent) {
         super.scrollWheel(with: event)
         let atBottom = !canScroll || scrollPosition >= 0.999
@@ -84,6 +87,8 @@ class FlockTerminalView: LocalProcessTerminalView {
         // User typed something — release scroll lock so output follows naturally
         isUserScrolledBack = false
         terminal.userScrolling = false
+        // Mark input time so we can suppress echo in activity detection
+        lastUserInputTime = CFAbsoluteTimeGetCurrent()
         super.send(source: source, data: data)
         guard let manager = owningPane?.manager, manager.isBroadcasting else { return }
         let snapshot = manager.panes

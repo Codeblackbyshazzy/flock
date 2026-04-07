@@ -1,13 +1,15 @@
 import AppKit
+import Darwin.POSIX
 import SwiftTerm
 
 class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
     let terminalView: FlockTerminalView
     var shouldResume: Bool = false
+    var resumeSessionId: String?  // Exact Claude session UUID to resume
 
     // Agent activity detection (Claude panes only)
     private var agentActivityTimer: Timer?
-    private let agentIdleTimeout: TimeInterval = 2.5
+    private let agentIdleTimeout: TimeInterval = 1.2
     private var recentByteCount: Int = 0
     private var byteWindowTimer: Timer?
     private let byteRateThreshold: Int = 150  // bytes per second to count as "active"
@@ -15,8 +17,8 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
     // Agent state parsing (Claude panes only)
     let outputParser = ClaudeOutputParser()
 
-    // Initial directory (for context file writes)
-    private var contextDirectory: String?
+    // Initial directory (for context file writes and session restore)
+    private(set) var contextDirectory: String?
 
     // Temp ZDOTDIR for shell enhancements (cleaned up on shutdown)
     private var zdotdir: String?
@@ -44,12 +46,20 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
             self.agentState = state
 
             self.updateTitleBar()
+            self.updateBorderForState()
             self.manager?.tabBar?.update()
             self.manager?.statusBar?.update()
         }
 
         outputParser.onAction = { [weak self] entry in
             self?.changeLogView?.addAction(entry)
+        }
+
+        // Auto-accept workspace trust prompt
+        outputParser.onTrustPrompt = { [weak self] in
+            guard let self else { return }
+            NSLog("[Flock] Trust prompt detected in pane, auto-accepting")
+            self.sendText("\r")
         }
 
         // Terminal
@@ -75,13 +85,25 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
         if type == .claude {
             contextDirectory = workingDirectory ?? FileManager.default.homeDirectoryForCurrentUser.path
-            if let dir = contextDirectory, Settings.shared.memoryEnabled {
-                MemoryStore.shared.writeContextFile(to: dir)
-            }
 
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                 guard let self else { return }
-                self.sendText(self.shouldResume ? "claude --resume\n" : "claude\n")
+                // Write context file only for new sessions (not resume) to avoid
+                // triggering file-change permission prompts in Claude
+                if !self.shouldResume, let dir = self.contextDirectory, Settings.shared.memoryEnabled {
+                    MemoryStore.shared.writeContextFile(to: dir)
+                }
+                if self.shouldResume {
+                    if let sid = self.resumeSessionId, sid != "resume" {
+                        // Resume exact conversation by session ID
+                        self.sendText("claude --resume \(sid) --dangerously-skip-permissions\n")
+                    } else {
+                        // Fallback: continue most recent conversation in this directory
+                        self.sendText("claude -c --dangerously-skip-permissions\n")
+                    }
+                } else {
+                    self.sendText("claude --dangerously-skip-permissions\n")
+                }
             }
         }
 
@@ -149,6 +171,10 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
     func didReceiveOutput(byteCount: Int) {
         guard paneType == .claude && Settings.shared.showActivityIndicators else { return }
+
+        // Ignore keyboard echo — if user typed recently, this is likely just echo
+        let timeSinceInput = CFAbsoluteTimeGetCurrent() - terminalView.lastUserInputTime
+        if timeSinceInput < 0.3 { return }
 
         recentByteCount += byteCount
 
@@ -241,6 +267,59 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
     func sendText(_ text: String) { terminalView.send(txt: text) }
 
+    /// Returns the current working directory of the shell process via proc_pidinfo.
+    /// Works even when Claude Code is the active foreground process, because the
+    /// shell's CWD reflects where it was when claude was launched.
+    func processWorkingDirectory() -> String? {
+        let pid = terminalView.process.shellPid
+        guard pid > 0 else { return nil }
+        var pathInfo = proc_vnodepathinfo()
+        let size = Int32(MemoryLayout<proc_vnodepathinfo>.size)
+        let result = proc_pidinfo(pid, PROC_PIDVNODEPATHINFO, 0, &pathInfo, size)
+        guard result == size else { return nil }
+        return withUnsafePointer(to: pathInfo.pvi_cdir.vip_path) { ptr in
+            ptr.withMemoryRebound(to: CChar.self, capacity: Int(MAXPATHLEN)) {
+                String(cString: $0)
+            }
+        }
+    }
+
+    // MARK: - Session ID capture
+
+    /// Captures the Claude session ID by reading ~/.claude/sessions/<PID>.json.
+    /// Claude writes a JSON file named by its PID that contains the sessionId.
+    /// Each pane's shell has one Claude child → its PID maps to exactly one session.
+    func captureSessionId() {
+        guard paneType == .claude else { return }
+        let shellPid = terminalView.process.shellPid
+        guard shellPid > 0 else { return }
+
+        // Find the Claude child process of our shell
+        let maxPids = 4096
+        var allPids = [pid_t](repeating: 0, count: maxPids)
+        let pidBytes = proc_listpids(UInt32(PROC_ALL_PIDS), 0, &allPids, Int32(maxPids * MemoryLayout<pid_t>.size))
+        let pidCount = Int(pidBytes) / MemoryLayout<pid_t>.size
+
+        for i in 0..<pidCount {
+            let pid = allPids[i]
+            guard pid > 0 else { continue }
+
+            var taskInfo = proc_bsdshortinfo()
+            let infoSize = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &taskInfo, Int32(MemoryLayout<proc_bsdshortinfo>.size))
+            guard infoSize > 0, taskInfo.pbsi_ppid == UInt32(shellPid) else { continue }
+
+            // Found child of our shell — read ~/.claude/sessions/<PID>.json
+            let sessionFile = FileManager.default.homeDirectoryForCurrentUser
+                .appendingPathComponent(".claude/sessions/\(pid).json")
+            guard let data = try? Data(contentsOf: sessionFile),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let sessionId = json["sessionId"] as? String else { continue }
+
+            resumeSessionId = sessionId
+            return
+        }
+    }
+
     override func shutdown() {
         if let dir = zdotdir { ShellEnhancer.cleanup(zdotdir: dir) }
         terminalView.terminate()
@@ -250,7 +329,12 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
     override func layoutContent() {
         let pad: CGFloat = 8
-        terminalView.frame = CGRect(x: pad, y: titleBarHeight, width: clipView.bounds.width - pad * 2, height: clipView.bounds.height - titleBarHeight - pad)
+        let newFrame = CGRect(x: pad, y: titleBarHeight, width: clipView.bounds.width - pad * 2, height: clipView.bounds.height - titleBarHeight - pad)
+        // Only set frame if it actually changed — setting it unconditionally
+        // triggers SwiftTerm's internal layout which resets scroll position
+        if terminalView.frame != newFrame {
+            terminalView.frame = newFrame
+        }
 
         // Reposition change log overlay if visible
         if let panel = changeLogView {

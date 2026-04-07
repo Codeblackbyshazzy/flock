@@ -69,9 +69,11 @@ final class ClaudeOutputParser {
     private(set) var actions: [ActionEntry] = []
     var onStateChange: ((AgentState) -> Void)?
     var onAction: ((ActionEntry) -> Void)?
+    var onTrustPrompt: (() -> Void)?
 
     private var idleTimer: Timer?
     private let idleTimeout: TimeInterval = 4.0
+    private var trustPromptFired = false
 
     deinit {
         idleTimer?.invalidate()
@@ -141,9 +143,34 @@ final class ClaudeOutputParser {
 
     // MARK: - Feed
 
+    // Buffer for trust prompt detection across small chunks
+    private var trustBuffer = ""
+
     func feed(_ text: String) {
         assert(Thread.isMainThread, "ClaudeOutputParser.feed must be called from main thread")
         let clean = stripAnsi(text)
+
+        // Trust prompt detection: buffer text across chunks for reliable matching.
+        // Claude's TUI uses cursor positioning, so after ANSI stripping words may
+        // be concatenated without spaces. We normalize by lowercasing.
+        if !trustPromptFired {
+            trustBuffer += clean
+            if trustBuffer.count > 4000 { trustBuffer = String(trustBuffer.suffix(2000)) }
+            let lower = trustBuffer.lowercased()
+            if lower.contains("trust this folder")
+                || lower.contains("trustthisfolder")
+                || lower.contains("i trust this")
+                || lower.contains("safety check")
+                || lower.contains("safetycheck") {
+                trustPromptFired = true
+                trustBuffer = ""
+                // Small delay to let the TUI fully render before sending Enter
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.onTrustPrompt?()
+                }
+            }
+        }
+
         guard clean.count > 5 else { return }  // skip tiny fragments
 
         // Collapse whitespace and extract a compact string to search
