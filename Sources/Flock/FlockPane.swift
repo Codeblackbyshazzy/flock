@@ -23,6 +23,7 @@ class FlockPane: NSView {
     let paneTitleBar = NSView(frame: .zero)
     let titleProcessLabel = NSTextField(labelWithString: "")
     let titleCwdLabel = NSTextField(labelWithString: "")
+    let titleCostLabel = NSTextField(labelWithString: "")
     let titleBarHeight: CGFloat = 24
 
     // Shared state -- subclasses modify directly
@@ -124,6 +125,16 @@ class FlockPane: NSView {
         titleCwdLabel.lineBreakMode = .byTruncatingMiddle
         paneTitleBar.addSubview(titleCwdLabel)
 
+        // Cost label (Claude panes only)
+        titleCostLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+        titleCostLabel.textColor = Theme.textTertiary
+        titleCostLabel.alignment = .right
+        titleCostLabel.isBezeled = false
+        titleCostLabel.drawsBackground = false
+        titleCostLabel.isEditable = false
+        titleCostLabel.isHidden = paneType != .claude
+        paneTitleBar.addSubview(titleCostLabel)
+
         updateTitleBar()
 
         // Theme observer
@@ -155,6 +166,7 @@ class FlockPane: NSView {
         paneTitleBar.layer?.backgroundColor = Theme.surface.cgColor
         titleProcessLabel.textColor = Theme.textSecondary
         titleCwdLabel.textColor = Theme.textTertiary
+        titleCostLabel.textColor = Theme.textTertiary
         themeDidChange()
     }
 
@@ -293,8 +305,18 @@ class FlockPane: NSView {
         paneTitleBar.frame = CGRect(x: 0, y: 0, width: clipView.bounds.width, height: titleBarHeight)
         let labelH: CGFloat = 16
         let labelY = (titleBarHeight - labelH) / 2
-        titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: paneTitleBar.bounds.width / 2 - 12, height: labelH)
-        titleCwdLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2, y: labelY, width: paneTitleBar.bounds.width / 2 - 8, height: labelH)
+        // Measure cost label width dynamically
+        var costW: CGFloat = 0
+        if !titleCostLabel.isHidden && !titleCostLabel.stringValue.isEmpty {
+            titleCostLabel.sizeToFit()
+            costW = ceil(titleCostLabel.frame.width) + 8  // 8px breathing room
+        }
+        let barW = paneTitleBar.bounds.width
+        titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: barW / 2 - 12, height: labelH)
+        titleCwdLabel.frame = CGRect(x: barW / 2, y: labelY, width: barW / 2 - 8 - costW, height: labelH)
+        if costW > 0 {
+            titleCostLabel.frame = CGRect(x: barW - costW - 8, y: labelY, width: costW, height: labelH)
+        }
         ambientShadowLayer.frame = bounds
         dimOverlayLayer.frame = bounds
         accentBarLayer.frame = CGRect(x: 4, y: 0, width: bounds.width - 8, height: 3)
