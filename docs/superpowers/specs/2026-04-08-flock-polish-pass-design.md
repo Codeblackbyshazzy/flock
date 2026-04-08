@@ -26,9 +26,14 @@ New users (PH launch is bringing them in) currently land in a bare Claude pane w
 **1.1 First-launch welcome card**
 - A one-time card overlay on the main window the first time the app launches with no restored session.
 - Content: short headline, 4–5 key bindings (`⌘K` palette, `⌘D` split, `⌘⇧M` memory, `⌘⇧A` agent mode, `⌘,` prefs), one line about themes.
-- Visual: theme-aware card using `Theme.surface` and `Theme.borderRest`, small watercolor bird illustration in the corner (reuse the existing logo asset). Tasteful, not loud.
+- Visual: theme-aware card using `Theme.surface` and `Theme.borderRest`, sized to feel like a small printed card rather than a full modal. Backdrop dims the rest of the window slightly (matches the existing CommandPalette overlay pattern).
+- **Animated bird mascot.** A small watercolor bird (reusing `docs/icon.png` or a dedicated asset bundled into the app) sits in the upper-left of the card and animates:
+  - **Idle bob:** continuous gentle Y-axis bob (`CABasicAnimation` on `position.y`, ±2pt, 1.4s autoreverse, infinite). Always running while the card is visible.
+  - **Flap on appear:** when the card first appears, a one-shot wing flap. Implementation option A — sprite-sheet swap via `CAKeyframeAnimation` on `contents` if Brandon provides 3-frame flap art. Option B — fallback if no sprite sheet: rotate the whole bird ±6° via `CAKeyframeAnimation` on `transform.rotation.z` over 0.5s, easing out. Spec leaves the choice to implementation; pick option A if the asset is ready, B if not.
+  - **Hover wave:** if the user mouses over the bird, it tilts toward the cursor (a small `CABasicAnimation` on rotation, 0.3s, easeInOut). Returns to neutral on mouse-out. Tiny piece of delight.
 - Dismissable via "Got it" button or `Esc`. Sets `Settings.shared.hasSeenWelcome = true` and never appears again.
-- New file: `WelcomeCard.swift`. Wired in `main.swift` after pane creation, gated on `!Settings.shared.hasSeenWelcome && paneManager.panes.count == 1`.
+- New file: `WelcomeCard.swift` (overlay view + animated bird layer host). Wired in `main.swift` after pane creation, gated on `!Settings.shared.hasSeenWelcome && paneManager.panes.count == 1`.
+- **Asset note:** if no bird sprite-sheet exists yet, ship with the static logo + bob + rotate-flap + hover-tilt for v0.9.6. A flap sprite sheet can drop in later as a single asset swap with no code change beyond the `CAKeyframeAnimation` `values` array.
 
 **1.2 Empty Agent sidebar hint**
 - When `TaskStore.shared.tasks.isEmpty` and Agent Mode is active, show a centered placeholder in `AgentSidebarView`: short instruction line plus the `⌘N` shortcut.
