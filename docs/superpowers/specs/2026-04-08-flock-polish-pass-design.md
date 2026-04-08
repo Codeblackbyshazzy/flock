@@ -27,13 +27,18 @@ New users (PH launch is bringing them in) currently land in a bare Claude pane w
 - A one-time card overlay on the main window the first time the app launches with no restored session.
 - Content: short headline, 4–5 key bindings (`⌘K` palette, `⌘D` split, `⌘⇧M` memory, `⌘⇧A` agent mode, `⌘,` prefs), one line about themes.
 - Visual: theme-aware card using `Theme.surface` and `Theme.borderRest`, sized to feel like a small printed card rather than a full modal. Backdrop dims the rest of the window slightly (matches the existing CommandPalette overlay pattern).
-- **Animated bird mascot.** A small watercolor bird (reusing `docs/icon.png` or a dedicated asset bundled into the app) sits in the upper-left of the card and animates:
-  - **Idle bob:** continuous gentle Y-axis bob (`CABasicAnimation` on `position.y`, ±2pt, 1.4s autoreverse, infinite). Always running while the card is visible.
-  - **Flap on appear:** when the card first appears, a one-shot wing flap. Implementation option A — sprite-sheet swap via `CAKeyframeAnimation` on `contents` if Brandon provides 3-frame flap art. Option B — fallback if no sprite sheet: rotate the whole bird ±6° via `CAKeyframeAnimation` on `transform.rotation.z` over 0.5s, easing out. Spec leaves the choice to implementation; pick option A if the asset is ready, B if not.
-  - **Hover wave:** if the user mouses over the bird, it tilts toward the cursor (a small `CABasicAnimation` on rotation, 0.3s, easeInOut). Returns to neutral on mouse-out. Tiny piece of delight.
+- **Animated pixel bird.** A small pixel-art bird flies across the top of the card, ported directly from the marketing site (`docs/index.html` lines 148–176). The site draws each bird from `box-shadow` pixels and swaps between two frames every 0.4s with `steps(1)` to flap. Same approach in Cocoa:
+  - New view: `PixelBirdView: NSView`. No image asset needed.
+  - Two frames hard-coded as `[(Int, Int)]` pixel coordinates on a 7×3 grid:
+    - **Frame 0 (wings up):** `[(0,0),(6,0),(1,1),(5,1),(2,2),(3,2),(4,2)]`
+    - **Frame 1 (wings down):** `[(2,0),(3,0),(4,0),(1,1),(5,1),(0,2),(6,2)]`
+  - `draw(_:)` fills each pixel as a small square (e.g., 4pt × 4pt) in `Theme.textPrimary`. Total bird size ≈ 28×12pt.
+  - A `Timer` (or `CADisplayLink` equivalent) flips a `frame: Int` every 0.4s and calls `setNeedsDisplay`.
+  - **Flight path:** a `CABasicAnimation` on `position.x` translates the bird from off-card-left to off-card-right over ~6s, looping infinitely. One bird is enough for the card; the marketing site uses 7 because the hero is full-screen, but a single bird carries the same charm at this scale.
+  - **Hover interaction:** hovering the card (any part, via `NSTrackingArea`) speeds the flap timer up briefly to 0.2s for ~1s, then eases back. Tiny moment of delight that says the card knows you're there.
 - Dismissable via "Got it" button or `Esc`. Sets `Settings.shared.hasSeenWelcome = true` and never appears again.
-- New file: `WelcomeCard.swift` (overlay view + animated bird layer host). Wired in `main.swift` after pane creation, gated on `!Settings.shared.hasSeenWelcome && paneManager.panes.count == 1`.
-- **Asset note:** if no bird sprite-sheet exists yet, ship with the static logo + bob + rotate-flap + hover-tilt for v0.9.6. A flap sprite sheet can drop in later as a single asset swap with no code change beyond the `CAKeyframeAnimation` `values` array.
+- New files: `WelcomeCard.swift` (overlay view), `PixelBirdView.swift` (the bird view, kept separate so it can be reused — e.g., later as a loading indicator or empty-state decoration). Wired in `main.swift` after pane creation, gated on `!Settings.shared.hasSeenWelcome && paneManager.panes.count == 1`.
+- **Continuity bonus:** because this is the same bird from the website hero, a user who installed via the marketing site sees the exact same character on first launch. Brand echo for free.
 
 **1.2 Empty Agent sidebar hint**
 - When `TaskStore.shared.tasks.isEmpty` and Agent Mode is active, show a centered placeholder in `AgentSidebarView`: short instruction line plus the `⌘N` shortcut.
@@ -110,6 +115,7 @@ Several real features are unreachable without already knowing they exist.
 ## Files touched (estimated)
 
 - `WelcomeCard.swift` — new
+- `PixelBirdView.swift` — new (reusable pixel bird, ported from marketing site)
 - `main.swift` — menu items, welcome wiring
 - `Settings.swift` — `hasSeenWelcome` flag
 - `AgentSidebarView.swift` — empty state, button rename, hover token
