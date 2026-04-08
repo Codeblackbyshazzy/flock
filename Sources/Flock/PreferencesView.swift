@@ -12,6 +12,7 @@ class PreferencesView: NSView {
     private let paneTypeControl = NSSegmentedControl()
     private let launchControl = NSSegmentedControl()
     private let activitySwitch = NSSwitch()
+    private let claudeBordersSwitch = NSSwitch()
     private let soundSwitch = NSSwitch()
     private let memorySwitch = NSSwitch()
     private let wrenSwitch = NSSwitch()
@@ -221,6 +222,24 @@ class PreferencesView: NSView {
 
         y += rowHeight
 
+        // Claude Session Borders
+
+        addLabel("Claude Borders", y: y)
+
+        claudeBordersSwitch.state = settings.showClaudeSessionBorders ? .on : .off
+        claudeBordersSwitch.target = self
+        claudeBordersSwitch.action = #selector(claudeBordersChanged(_:))
+        claudeBordersSwitch.frame = NSRect(x: controlX, y: y + 2, width: 38, height: 22)
+        addSubview(claudeBordersSwitch)
+
+        let claudeBordersHint = NSTextField(labelWithString: "Blue/red border shows Claude status")
+        claudeBordersHint.font = NSFont.systemFont(ofSize: 10, weight: .regular)
+        claudeBordersHint.textColor = Theme.textTertiary
+        claudeBordersHint.frame = NSRect(x: controlX + 48, y: y + 5, width: 240, height: 14)
+        addSubview(claudeBordersHint)
+
+        y += rowHeight
+
         // Sound Effects
 
         addLabel("Sound Effects", y: y)
@@ -398,6 +417,10 @@ class PreferencesView: NSView {
 
     @objc private func activityChanged(_ sender: NSSwitch) {
         Settings.shared.showActivityIndicators = (sender.state == .on)
+    }
+
+    @objc private func claudeBordersChanged(_ sender: NSSwitch) {
+        Settings.shared.showClaudeSessionBorders = (sender.state == .on)
     }
 
     @objc private func soundChanged(_ sender: NSSwitch) {

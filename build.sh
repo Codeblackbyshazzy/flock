@@ -22,8 +22,10 @@ mkdir -p "$APP/Contents/Resources"
 cp .build/release/Flock "$APP/Contents/MacOS/Flock"
 cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 cp Resources/zsh-autosuggestions.zsh "$APP/Contents/Resources/zsh-autosuggestions.zsh"
-/usr/bin/perl -0pe 's{(<key>CFBundleVersion</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g; s{(<key>CFBundleShortVersionString</key>\s*<string>)[^<]+(</string>)}{$1'"$VERSION"'$2}g' \
-  Info.plist > "$APP/Contents/Info.plist"
+# Copy plist and update version fields safely (avoid brittle regex edits).
+cp Info.plist "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
+/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 
 # Sign with Developer ID + hardened runtime
 codesign --force --sign "$SIGNING_IDENTITY" \
@@ -40,9 +42,27 @@ codesign --force --sign "$SIGNING_IDENTITY" \
 
 codesign --verify --deep --strict "$APP"
 
-# Install to /Applications (rm first — cp -R can't overwrite a running app)
-rm -rf /Applications/Flock.app
-cp -R "$APP" /Applications/Flock.app
+# Install to /Applications safely.
+# IMPORTANT: Never delete/replace the app bundle while it's running.
+INSTALL_PATH="${INSTALL_PATH:-/Applications/Flock.app}"
+
+if pgrep -x "Flock" >/dev/null 2>&1; then
+  echo ""
+  echo "Flock is currently running."
+  echo "To avoid crashing the running app, installation is blocked."
+  echo "Quit Flock, then re-run this script to install to:"
+  echo "  $INSTALL_PATH"
+  echo ""
+  echo "Tip: If you want to install alongside your current app, run:"
+  echo "  INSTALL_PATH=\"/Applications/Flock Dev.app\" ./build.sh"
+  exit 2
+fi
+
+TMP_APP="${INSTALL_PATH}.tmp"
+rm -rf "$TMP_APP"
+/usr/bin/ditto "$APP" "$TMP_APP"
+rm -rf "$INSTALL_PATH"
+mv "$TMP_APP" "$INSTALL_PATH"
 
 # Also keep CLI symlink
 mkdir -p ~/.local/bin
@@ -54,5 +74,5 @@ fi
 
 echo ""
 echo "Done."
-echo "  App:  /Applications/Flock.app (double-click or Spotlight)"
+echo "  App:  $INSTALL_PATH (double-click or Spotlight)"
 echo "  CLI:  flock"

@@ -64,6 +64,33 @@ class FlockPane: NSView {
         NotificationCenter.default.removeObserver(self)
     }
 
+    private var claudeSessionBordersEnabled: Bool {
+        Settings.shared.showClaudeSessionBorders
+    }
+
+    private func applyBorderAppearance(animated: Bool) {
+        let apply = {
+            if self.paneType == .claude, self.claudeSessionBordersEnabled {
+                // Claude-specific border logic lives in updateBorderForState()/animateAppearance().
+                self.updateBorderForState()
+            } else {
+                // Default pane border behavior (also used when Claude borders are disabled).
+                self.layer?.borderWidth = 1
+                self.layer?.borderColor = (self.isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
+            }
+        }
+
+        if animated {
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(Theme.Anim.fast)
+            CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+            apply()
+            CATransaction.commit()
+        } else {
+            apply()
+        }
+    }
+
     // MARK: - Chrome setup
 
     private func setupChrome() {
@@ -74,8 +101,8 @@ class FlockPane: NSView {
         layer?.shadowOpacity = Theme.Shadow.Rest.contact.opacity
         layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
         layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
-        layer?.borderWidth = paneType == .claude ? 1.5 : 1
-        layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x4A90D9) : Theme.borderRest).cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = Theme.borderRest.cgColor
 
         // Ambient shadow
         ambientShadowLayer.shadowColor = NSColor.black.cgColor
@@ -140,6 +167,12 @@ class FlockPane: NSView {
         // Theme observer
         NotificationCenter.default.addObserver(self, selector: #selector(baseThemeDidChange),
                                                name: Theme.themeDidChange, object: nil)
+
+        // Settings observer (Claude border toggle)
+        NotificationCenter.default.addObserver(self, selector: #selector(settingsDidChange(_:)),
+                                               name: Settings.didChange, object: nil)
+
+        applyBorderAppearance(animated: false)
     }
 
     // MARK: - Title bar (override in subclasses)
@@ -156,11 +189,7 @@ class FlockPane: NSView {
 
     @objc private func baseThemeDidChange() {
         layer?.backgroundColor = Theme.surface.cgColor
-        if paneType == .claude {
-            layer?.borderColor = (isFocused ? NSColor(hex: 0x6AB0FF) : NSColor(hex: 0x4A90D9)).cgColor
-        } else {
-            layer?.borderColor = (isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
-        }
+        applyBorderAppearance(animated: false)
         ambientShadowLayer.backgroundColor = Theme.surface.cgColor
         dimOverlayLayer.backgroundColor = Theme.chrome.withAlphaComponent(0.04).cgColor
         paneTitleBar.layer?.backgroundColor = Theme.surface.cgColor
@@ -168,6 +197,14 @@ class FlockPane: NSView {
         titleCwdLabel.textColor = Theme.textTertiary
         titleCostLabel.textColor = Theme.textTertiary
         themeDidChange()
+    }
+
+    @objc private func settingsDidChange(_ note: Notification) {
+        guard
+            let key = note.userInfo?["key"] as? String,
+            key == "showClaudeSessionBorders"
+        else { return }
+        applyBorderAppearance(animated: true)
     }
 
     /// Override point for subclass-specific theme updates.
@@ -179,6 +216,11 @@ class FlockPane: NSView {
     /// Red = actively outputting, Blue = idle/waiting for prompt.
     func updateBorderForState() {
         guard paneType == .claude else { return }
+        guard claudeSessionBordersEnabled else {
+            layer?.borderWidth = 1
+            layer?.borderColor = (isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
+            return
+        }
 
         CATransaction.begin()
         CATransaction.setAnimationDuration(Theme.Anim.fast)
@@ -219,10 +261,10 @@ class FlockPane: NSView {
         CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
 
         // If Claude pane is actively working, keep the red border
-        let claudeIsWorking = paneType == .claude && (isAgentActive || agentState == .error)
+        let claudeIsWorking = paneType == .claude && claudeSessionBordersEnabled && (isAgentActive || agentState == .error)
 
         if !claudeIsWorking {
-            layer?.borderWidth = paneType == .claude ? 1.5 : 1
+            layer?.borderWidth = 1
         }
 
         if isFocused {
@@ -230,7 +272,7 @@ class FlockPane: NSView {
             layer?.shadowRadius = Theme.Shadow.Focus.contact.radius
             layer?.shadowOffset = Theme.Shadow.Focus.contact.offset
             if !claudeIsWorking {
-                layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x6AB0FF) : Theme.borderFocus).cgColor
+                layer?.borderColor = (paneType == .claude && claudeSessionBordersEnabled ? NSColor(hex: 0x6AB0FF) : Theme.borderFocus).cgColor
             }
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Focus.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Focus.ambient.radius
@@ -241,7 +283,7 @@ class FlockPane: NSView {
             layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
             layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
             if !claudeIsWorking {
-                layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x4A90D9) : Theme.borderRest).cgColor
+                layer?.borderColor = (paneType == .claude && claudeSessionBordersEnabled ? NSColor(hex: 0x4A90D9) : Theme.borderRest).cgColor
             }
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Rest.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Rest.ambient.radius

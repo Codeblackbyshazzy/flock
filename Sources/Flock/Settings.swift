@@ -16,6 +16,7 @@ class Settings {
         case defaultPaneType
         case startupBehavior
         case showActivityIndicators
+        case showClaudeSessionBorders
         case themeId
         case soundEffectsEnabled
         case globalHotkeyEnabled
@@ -58,6 +59,14 @@ class Settings {
             return defaults.bool(forKey: Key.showActivityIndicators.rawValue)
         }
         set { defaults.set(newValue, forKey: Key.showActivityIndicators.rawValue); post(.showActivityIndicators) }
+    }
+
+    var showClaudeSessionBorders: Bool {
+        get {
+            if defaults.object(forKey: Key.showClaudeSessionBorders.rawValue) == nil { return true }
+            return defaults.bool(forKey: Key.showClaudeSessionBorders.rawValue)
+        }
+        set { defaults.set(newValue, forKey: Key.showClaudeSessionBorders.rawValue); post(.showClaudeSessionBorders) }
     }
 
     var soundEffectsEnabled: Bool {
