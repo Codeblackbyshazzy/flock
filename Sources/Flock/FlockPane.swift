@@ -23,10 +23,15 @@ class FlockPane: NSView {
     let paneTitleBar = NSView(frame: .zero)
     let titleProcessLabel = NSTextField(labelWithString: "")
     let titleCwdLabel = NSTextField(labelWithString: "")
+    let titleCostLabel = NSTextField(labelWithString: "")
     let titleBarHeight: CGFloat = 24
 
     // Shared state -- subclasses modify directly
-    var isAgentActive: Bool = false
+    var isAgentActive: Bool = false {
+        didSet {
+            if oldValue != isAgentActive { updateBorderForState() }
+        }
+    }
     var processTitle: String?
     var agentState: AgentState = .idle
     var commandStartTime: Date?
@@ -69,8 +74,8 @@ class FlockPane: NSView {
         layer?.shadowOpacity = Theme.Shadow.Rest.contact.opacity
         layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
         layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
-        layer?.borderWidth = 1
-        layer?.borderColor = Theme.borderRest.cgColor
+        layer?.borderWidth = paneType == .claude ? 1.5 : 1
+        layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x4A90D9) : Theme.borderRest).cgColor
 
         // Ambient shadow
         ambientShadowLayer.shadowColor = NSColor.black.cgColor
@@ -120,6 +125,16 @@ class FlockPane: NSView {
         titleCwdLabel.lineBreakMode = .byTruncatingMiddle
         paneTitleBar.addSubview(titleCwdLabel)
 
+        // Cost label (Claude panes only)
+        titleCostLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
+        titleCostLabel.textColor = Theme.textTertiary
+        titleCostLabel.alignment = .right
+        titleCostLabel.isBezeled = false
+        titleCostLabel.drawsBackground = false
+        titleCostLabel.isEditable = false
+        titleCostLabel.isHidden = paneType != .claude
+        paneTitleBar.addSubview(titleCostLabel)
+
         updateTitleBar()
 
         // Theme observer
@@ -141,17 +156,49 @@ class FlockPane: NSView {
 
     @objc private func baseThemeDidChange() {
         layer?.backgroundColor = Theme.surface.cgColor
-        layer?.borderColor = (isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
+        if paneType == .claude {
+            layer?.borderColor = (isFocused ? NSColor(hex: 0x6AB0FF) : NSColor(hex: 0x4A90D9)).cgColor
+        } else {
+            layer?.borderColor = (isFocused ? Theme.borderFocus : Theme.borderRest).cgColor
+        }
         ambientShadowLayer.backgroundColor = Theme.surface.cgColor
         dimOverlayLayer.backgroundColor = Theme.chrome.withAlphaComponent(0.04).cgColor
         paneTitleBar.layer?.backgroundColor = Theme.surface.cgColor
         titleProcessLabel.textColor = Theme.textSecondary
         titleCwdLabel.textColor = Theme.textTertiary
+        titleCostLabel.textColor = Theme.textTertiary
         themeDidChange()
     }
 
     /// Override point for subclass-specific theme updates.
     func themeDidChange() {}
+
+    // MARK: - Claude border state
+
+    /// Updates the border color and width based on Claude activity.
+    /// Red = actively outputting, Blue = idle/waiting for prompt.
+    func updateBorderForState() {
+        guard paneType == .claude else { return }
+
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Theme.Anim.fast)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+
+        if agentState == .error {
+            layer?.borderWidth = 2
+            layer?.borderColor = NSColor(hex: 0xFF3B30).cgColor
+        } else if isAgentActive {
+            // Claude is actively outputting — red
+            layer?.borderWidth = 2
+            layer?.borderColor = NSColor(hex: 0xE05545).cgColor
+        } else {
+            // Idle — blue
+            layer?.borderWidth = 1.5
+            layer?.borderColor = (isFocused ? NSColor(hex: 0x6AB0FF) : NSColor(hex: 0x4A90D9)).cgColor
+        }
+
+        CATransaction.commit()
+    }
 
     // MARK: - Accent bar
 
@@ -171,13 +218,20 @@ class FlockPane: NSView {
         CATransaction.setAnimationDuration(Theme.Anim.normal)
         CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
 
-        layer?.borderWidth = 1
+        // If Claude pane is actively working, keep the red border
+        let claudeIsWorking = paneType == .claude && (isAgentActive || agentState == .error)
+
+        if !claudeIsWorking {
+            layer?.borderWidth = paneType == .claude ? 1.5 : 1
+        }
 
         if isFocused {
             layer?.shadowOpacity = Theme.Shadow.Focus.contact.opacity
             layer?.shadowRadius = Theme.Shadow.Focus.contact.radius
             layer?.shadowOffset = Theme.Shadow.Focus.contact.offset
-            layer?.borderColor = Theme.borderFocus.cgColor
+            if !claudeIsWorking {
+                layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x6AB0FF) : Theme.borderFocus).cgColor
+            }
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Focus.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Focus.ambient.radius
             ambientShadowLayer.shadowOffset = Theme.Shadow.Focus.ambient.offset
@@ -186,7 +240,9 @@ class FlockPane: NSView {
             layer?.shadowOpacity = Theme.Shadow.Rest.contact.opacity
             layer?.shadowRadius = Theme.Shadow.Rest.contact.radius
             layer?.shadowOffset = Theme.Shadow.Rest.contact.offset
-            layer?.borderColor = Theme.borderRest.cgColor
+            if !claudeIsWorking {
+                layer?.borderColor = (paneType == .claude ? NSColor(hex: 0x4A90D9) : Theme.borderRest).cgColor
+            }
             ambientShadowLayer.shadowOpacity = Theme.Shadow.Rest.ambient.opacity
             ambientShadowLayer.shadowRadius = Theme.Shadow.Rest.ambient.radius
             ambientShadowLayer.shadowOffset = Theme.Shadow.Rest.ambient.offset
@@ -249,8 +305,18 @@ class FlockPane: NSView {
         paneTitleBar.frame = CGRect(x: 0, y: 0, width: clipView.bounds.width, height: titleBarHeight)
         let labelH: CGFloat = 16
         let labelY = (titleBarHeight - labelH) / 2
-        titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: paneTitleBar.bounds.width / 2 - 12, height: labelH)
-        titleCwdLabel.frame = CGRect(x: paneTitleBar.bounds.width / 2, y: labelY, width: paneTitleBar.bounds.width / 2 - 8, height: labelH)
+        // Measure cost label width dynamically
+        var costW: CGFloat = 0
+        if !titleCostLabel.isHidden && !titleCostLabel.stringValue.isEmpty {
+            titleCostLabel.sizeToFit()
+            costW = ceil(titleCostLabel.frame.width) + 8  // 8px breathing room
+        }
+        let barW = paneTitleBar.bounds.width
+        titleProcessLabel.frame = CGRect(x: 8, y: labelY, width: barW / 2 - 12, height: labelH)
+        titleCwdLabel.frame = CGRect(x: barW / 2, y: labelY, width: barW / 2 - 8 - costW, height: labelH)
+        if costW > 0 {
+            titleCostLabel.frame = CGRect(x: barW - costW - 8, y: labelY, width: costW, height: labelH)
+        }
         ambientShadowLayer.frame = bounds
         dimOverlayLayer.frame = bounds
         accentBarLayer.frame = CGRect(x: 4, y: 0, width: bounds.width - 8, height: 3)

@@ -208,6 +208,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         (paneManager.panes[idx] as? TerminalPane)?.toggleChangeLog()
     }
 
+    @objc func toggleCostStats(_ sender: Any?) {
+        let idx = paneManager.activePaneIndex
+        guard idx >= 0, idx < paneManager.panes.count else { return }
+        (paneManager.panes[idx] as? TerminalPane)?.toggleCostStats()
+    }
+
     @objc func checkForUpdates(_ sender: Any?) {
         UpdateChecker.shared.checkNow()
     }
@@ -270,6 +276,8 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
             key: "m", mods: [.command, .shift], target: target)
     addItem(viewMenu, "Toggle Change Log", #selector(AppDelegate.toggleChangeLog(_:)),
             key: "l", mods: [.command, .shift], target: target)
+    addItem(viewMenu, "Toggle Usage Stats", #selector(AppDelegate.toggleCostStats(_:)),
+            key: "u", mods: [.command, .shift], target: target)
 
     // -- Pane menu --
     let paneItem = NSMenuItem(); main.addItem(paneItem)

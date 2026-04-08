@@ -332,6 +332,10 @@ class PaneManager {
     }
 
     func saveSession() {
+        // Capture each Claude pane's session ID from its running process before saving
+        for pane in panes {
+            (pane as? TerminalPane)?.captureSessionId()
+        }
         let tabs = tabNodes.map { encodeNode($0) }
         SessionRestore.save(tabs: tabs, activeIndex: activePaneIndex)
     }
@@ -351,11 +355,23 @@ class PaneManager {
         if let mp = pane as? MarkdownPane {
             return SessionPane(type: "markdown", workingDirectory: mp.filePath, customName: mp.customName, sessionId: nil)
         }
+        // Try multiple sources for working directory:
+        // 1. OSC 7 reported directory (most accurate when shell is in foreground)
+        // 2. CWD from the running process via proc_pidinfo (works even when Claude is active)
+        // 3. contextDirectory (the initial directory from pane creation)
+        let termPane = pane as? TerminalPane
+        let dir = pane.currentDirectory
+            ?? termPane?.processWorkingDirectory()
+            ?? termPane?.contextDirectory
+        // Use the session ID captured from the process's open files at shutdown
+        let sessionId: String? = pane.paneType == .claude
+            ? termPane?.resumeSessionId ?? "resume"
+            : nil
         return SessionPane(
             type: pane.paneType == .claude ? "claude" : "shell",
-            workingDirectory: pane.currentDirectory,
+            workingDirectory: dir,
             customName: pane.customName,
-            sessionId: pane.paneType == .claude ? "resume" : nil
+            sessionId: sessionId
         )
     }
 
@@ -414,8 +430,9 @@ class PaneManager {
         let type: PaneType = sp.type == "shell" ? .shell : .claude
         let pane = TerminalPane(type: type, manager: self, workingDirectory: sp.workingDirectory)
         pane.customName = sp.customName
-        if type == .claude, sp.sessionId != nil {
+        if type == .claude, let sid = sp.sessionId {
             pane.shouldResume = true
+            pane.resumeSessionId = sid
         }
         return pane
     }

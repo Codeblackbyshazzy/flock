@@ -4,9 +4,24 @@ import SwiftTerm
 class FlockTerminalView: LocalProcessTerminalView {
     weak var owningPane: TerminalPane?
 
+    // Scroll-lock: track whether the user has scrolled away from the bottom
+    private var isUserScrolledBack: Bool = false
+
+    // Typing detection: suppress activity indicator for keyboard echo
+    var lastUserInputTime: CFAbsoluteTime = 0
+
+    override func scrollWheel(with event: NSEvent) {
+        super.scrollWheel(with: event)
+        let atBottom = !canScroll || scrollPosition >= 0.999
+        isUserScrolledBack = !atBottom
+        terminal.userScrolling = isUserScrolledBack
+    }
+
     // Detect output for activity dots + agent state parsing + compression analytics
     private var utf8Remainder = Data()
     override func dataReceived(slice: ArraySlice<UInt8>) {
+        // Preserve user scroll position OR active selection: set flag BEFORE feed processes data
+        terminal.userScrolling = isUserScrolledBack || selectionActive
         super.dataReceived(slice: slice)
         let count = slice.count
         // Copy bytes NOW -- the backing buffer may be recycled before main runs
@@ -69,6 +84,11 @@ class FlockTerminalView: LocalProcessTerminalView {
 
     // Broadcast input: when typing in one pane, send to all others
     override func send(source: TerminalView, data: ArraySlice<UInt8>) {
+        // User typed something — release scroll lock so output follows naturally
+        isUserScrolledBack = false
+        terminal.userScrolling = false
+        // Mark input time so we can suppress echo in activity detection
+        lastUserInputTime = CFAbsoluteTimeGetCurrent()
         super.send(source: source, data: data)
         guard let manager = owningPane?.manager, manager.isBroadcasting else { return }
         let snapshot = manager.panes
