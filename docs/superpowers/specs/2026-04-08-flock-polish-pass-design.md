@@ -62,13 +62,11 @@ Several real features are unreachable without already knowing they exist.
 - Update `CommandPalette.swift:134-139` entries to display the new shortcuts.
 - Edit: `main.swift` (menu construction), `CommandPalette.swift`.
 
-**2.2 Split commands in View menu**
-- The View menu should have "Split Right" (`⌘D`) and "Split Down" (`⌘⇧D`) so they're discoverable from the menu bar, not only the right-click context menu.
-- Bindings already exist in `main.swift:278-291`; this just adds menu surface.
+**2.2 ~~Split commands in View menu~~ — DROPPED**
+- Verified during plan-write: Split commands are already in the Pane menu (`main.swift:285-288`) with `⌘D`/`⌘⇧D` bindings. The audit was wrong about them being right-click-only. No work needed.
 
-**2.3 Pane navigation in palette**
-- Arrow shortcuts (`⌘←/↑/→/↓`) for moving focus between panes work but show empty in the Command Palette listing (`main.swift:305-312`).
-- Populate the palette entries with their bindings so they appear in fuzzy search.
+**2.3 ~~Pane navigation in palette~~ — DROPPED**
+- Verified during plan-write: Arrow nav is already in the Pane menu (`main.swift:305-312`) AND `CommandPalette.swift:183-194` shows the shortcuts populated. No work needed.
 
 **2.4 Promoted agent activity dot**
 - The current red ✱ indicator is buried inside the tab label string in `TabBarView.swift:407-423`.
