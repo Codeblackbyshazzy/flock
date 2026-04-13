@@ -21,6 +21,17 @@ final class UpdateChecker {
 
     // Local changelog - update manually when cutting a release
     static let localChangelog: [ChangelogEntry] = [
+        ChangelogEntry(version: "0.9.6", date: "2026-04-13", changes: [
+            "Welcome card with animated pixel bird on first launch",
+            "File menu: New Markdown File (⌘N), Open Markdown File (⌘O)",
+            "Preferences now opens as an overlay instead of a separate window",
+            "Live font-size preview -- terminals update as you drag the slider",
+            "Agent activity shown as a clean dot instead of a red star",
+            "Empty-state hints in agent sidebar, memory panel, and status bar",
+            "Long-running commands turn accent at 5min, bold at 15min",
+            "Renamed \"Add Agent\" to \"New Task\" for clarity",
+            "Tab bar opacity and hover color consistency fixes",
+        ]),
         ChangelogEntry(version: "0.9.5", date: "2026-04-06", changes: [
             "Fixed cost tracker double-counting cache tokens",
             "Fixed memory edits silently lost due to lock semantics",
