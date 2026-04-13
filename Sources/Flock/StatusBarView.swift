@@ -97,7 +97,7 @@ class StatusBarView: NSView {
             newText = "\(running) running  \(queued) queued  \(done) done"
         } else {
             let n = mgr.panes.count
-            newText = n == 0 ? "" : n == 1 ? "1 session" : "\(n) sessions"
+            newText = n == 0 ? "\u{2318}T for a new pane" : n == 1 ? "1 session" : "\(n) sessions"
         }
 
         if newText != lastText && !lastText.isEmpty {
@@ -134,7 +134,20 @@ class StatusBarView: NSView {
         if let start = pane.commandStartTime {
             let elapsed = Int(Date().timeIntervalSince(start))
             durationLabel.stringValue = "Running: \(elapsed)s"
+            // Visual escalation for long-running commands
+            if elapsed >= 900 { // 15 minutes
+                durationLabel.textColor = Theme.accent
+                durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .bold)
+            } else if elapsed >= 300 { // 5 minutes
+                durationLabel.textColor = Theme.accent
+                durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+            } else {
+                durationLabel.textColor = Theme.textTertiary
+                durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+            }
         } else if let duration = pane.lastCommandDuration {
+            durationLabel.textColor = Theme.textTertiary
+            durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             if duration < 1 {
                 durationLabel.stringValue = String(format: "Last: %.0fms", duration * 1000)
             } else if duration < 60 {
@@ -145,6 +158,8 @@ class StatusBarView: NSView {
                 durationLabel.stringValue = "Last: \(mins)m\(secs)s"
             }
         } else {
+            durationLabel.textColor = Theme.textTertiary
+            durationLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
             durationLabel.stringValue = ""
         }
     }

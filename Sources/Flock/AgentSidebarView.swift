@@ -405,6 +405,23 @@ private final class SidebarDocumentView: NSView {
         // Sections
         var y: CGFloat = sidebar.addBtnHeight + Theme.Space.sm
 
+        // Empty-state hint when no tasks exist
+        if sidebar.buildSections().isEmpty {
+            let hint = "Add a task to get started.\n\u{2318}N to create one."
+            let hintAttrs: [NSAttributedString.Key: Any] = [
+                .font: Theme.Typo.caption,
+                .foregroundColor: Theme.textTertiary
+            ]
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.alignment = .center
+            let attrHint = NSMutableAttributedString(string: hint, attributes: hintAttrs)
+            attrHint.addAttribute(.paragraphStyle, value: paragraphStyle, range: NSRange(location: 0, length: hint.count))
+            let hintSize = attrHint.size()
+            let hintY = y + 40
+            attrHint.draw(in: NSRect(x: 0, y: hintY, width: width, height: hintSize.height + 4))
+            return
+        }
+
         for section in sidebar.buildSections() {
             drawSectionHeader(ctx: ctx, title: section.title, count: section.tasks.count, y: y, width: width)
             y += sidebar.sectionHeaderHeight
@@ -434,11 +451,11 @@ private final class SidebarDocumentView: NSView {
         dashPath.stroke()
 
         if isHovered {
-            Theme.hover.withAlphaComponent(0.4).setFill()
+            Theme.accentSubtle.setFill()
             NSBezierPath(roundedRect: rect, xRadius: 6, yRadius: 6).fill()
         }
 
-        let label = "+ New Agent"
+        let label = "+ New Task"
         let labelColor = isHovered ? Theme.textSecondary : Theme.textTertiary
         let attrs: [NSAttributedString.Key: Any] = [.font: Theme.Typo.caption, .foregroundColor: labelColor]
         let size = label.size(withAttributes: attrs)

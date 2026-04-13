@@ -131,10 +131,10 @@ class CommandPalette {
             CommandAction(name: "New Shell Pane", shortcut: "⌘⇧T", category: "Panes") { [weak self] in
                 self?.paneManager?.addPane(type: .shell)
             },
-            CommandAction(name: "New Markdown File", shortcut: "", category: "Files") { [weak self] in
+            CommandAction(name: "New Markdown File", shortcut: "\u{2318}N", category: "Files") { [weak self] in
                 self?.createMarkdownFile()
             },
-            CommandAction(name: "Open Markdown File", shortcut: "", category: "Files") { [weak self] in
+            CommandAction(name: "Open Markdown File", shortcut: "\u{2318}O", category: "Files") { [weak self] in
                 self?.openMarkdownPicker()
             },
             CommandAction(name: "Close Pane", shortcut: "⌘W", category: "Panes") { [weak self] in
@@ -246,7 +246,7 @@ class CommandPalette {
         pm.applyPreset(preset)
     }
 
-    private func openMarkdownPicker() {
+    func openMarkdownPicker() {
         guard let window = window else { return }
 
         let panel = NSOpenPanel()
@@ -268,7 +268,7 @@ class CommandPalette {
         }
     }
 
-    private func createMarkdownFile() {
+    func createMarkdownFile() {
         guard let window = window else { return }
 
         let panel = NSSavePanel()

@@ -84,7 +84,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
         super.init(frame: .zero)
         wantsLayer = true
         // Semi-transparent so the NSVisualEffectView behind shows through
-        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.88).cgColor
+        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.97).cgColor
 
         // Active indicator: thin bar under active tab
         activeIndicator.backgroundColor = Theme.accent.cgColor
@@ -97,7 +97,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
     }
 
     @objc private func themeChanged() {
-        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.88).cgColor
+        layer?.backgroundColor = Theme.chrome.withAlphaComponent(0.97).cgColor
         activeIndicator.backgroundColor = Theme.accent.cgColor
         needsDisplay = true
     }
@@ -329,7 +329,7 @@ class TabBarView: NSView, NSTextFieldDelegate {
               let mgr = paneManager else { return }
 
         // Chrome background (semi-transparent for vibrancy)
-        ctx.setFillColor(Theme.chrome.withAlphaComponent(0.88).cgColor)
+        ctx.setFillColor(Theme.chrome.withAlphaComponent(0.97).cgColor)
         ctx.fill(bounds)
 
         // Bottom divider — gradient fade at edges
@@ -404,22 +404,24 @@ class TabBarView: NSView, NSTextFieldDelegate {
                 ctx.restoreGState()
             }
 
-            // Label — color the ✱ star red when agent is active
+            // Label
             let label = tabLabel(for: i, node: node)
             let leaves = node.allLeaves
             let agentWorking = leaves.contains(where: { $0.isAgentActive }) && Settings.shared.showActivityIndicators
             let textColor = active ? Theme.textPrimary : Theme.textSecondary
             let font = active ? Theme.Typo.tabActive : Theme.Typo.tabRest
-            let starChar: Character = "\u{2731}" // ✱
-            let origin = NSPoint(x: rect.origin.x + tabPadL, y: rect.midY - label.size(withAttributes: [.font: font]).height / 2)
+            let labelSize = label.size(withAttributes: [.font: font])
+            let origin = NSPoint(x: rect.origin.x + tabPadL, y: rect.midY - labelSize.height / 2)
+            label.draw(at: origin, withAttributes: [.font: font, .foregroundColor: textColor])
 
-            if agentWorking, let starRange = label.range(of: String(starChar)) {
-                let attrStr = NSMutableAttributedString(string: label, attributes: [.font: font, .foregroundColor: textColor])
-                let nsRange = NSRange(starRange, in: label)
-                attrStr.addAttribute(.foregroundColor, value: NSColor(hex: 0xFF3B30), range: nsRange)
-                attrStr.draw(at: origin)
-            } else {
-                label.draw(at: origin, withAttributes: [.font: font, .foregroundColor: textColor])
+            // Activity dot — discrete colored dot after label when agent is working
+            if agentWorking {
+                let dotDiameter: CGFloat = 5
+                let dotX = origin.x + labelSize.width + 4
+                let dotY = rect.midY - dotDiameter / 2
+                let dotAlpha = tabHoverProgress[i].map { max(0.6, $0) } ?? 1.0
+                Theme.accent.withAlphaComponent(dotAlpha).setFill()
+                NSBezierPath(ovalIn: CGRect(x: dotX, y: dotY, width: dotDiameter, height: dotDiameter)).fill()
             }
             // Accent color dot — show first leaf's accent
             if let accent = leaves.first?.accentColor {

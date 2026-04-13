@@ -83,6 +83,9 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
         terminalView.processDelegate = self
         clipView.addSubview(terminalView)
 
+        // Live font-size preview
+        observeFontSize()
+
         // Start shell with enhancements (autosuggestions)
         let shell = ProcessInfo.processInfo.environment["SHELL"] ?? "/bin/zsh"
         let name = (shell as NSString).lastPathComponent
@@ -168,6 +171,21 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
         terminalView.nativeForegroundColor = Theme.terminalFg
         installAnsiColors()
         terminalView.setNeedsDisplay(terminalView.bounds)
+    }
+
+    // MARK: - Live font-size preview
+
+    private var fontSizeObserver: Any?
+
+    func observeFontSize() {
+        fontSizeObserver = NotificationCenter.default.addObserver(
+            forName: Settings.didChange, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let key = note.userInfo?["key"] as? String, key == "fontSize" else { return }
+            let size = Settings.shared.fontSize
+            self?.terminalView.font = NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+            self?.terminalView.setNeedsDisplay(self?.terminalView.bounds ?? .zero)
+        }
     }
 
     // MARK: - Title bar
@@ -530,6 +548,7 @@ class TerminalPane: FlockPane, LocalProcessTerminalViewDelegate {
 
     override func shutdown() {
         costUpdateTimer?.invalidate()
+        if let obs = fontSizeObserver { NotificationCenter.default.removeObserver(obs) }
         if let dir = zdotdir { ShellEnhancer.cleanup(zdotdir: dir) }
         terminalView.terminate()
     }

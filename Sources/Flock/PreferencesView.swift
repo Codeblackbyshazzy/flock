@@ -31,37 +31,94 @@ class PreferencesView: NSView {
     private let sectionGap: CGFloat = 28
     private let sectionHeaderHeight: CGFloat = 20
 
-    // MARK: - Show
+    // MARK: - Show (backdrop overlay)
 
-    private static weak var currentPanel: NSPanel?
+    private static weak var currentBackdrop: NSView?
+    private static weak var currentCard: PreferencesView?
 
     static func show(on window: NSWindow) {
-        if currentPanel != nil { return }
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 576),
-            styleMask: [.titled, .closable],
-            backing: .buffered,
-            defer: true
-        )
-        panel.title = "Preferences"
-        panel.isFloatingPanel = false
-        panel.becomesKeyOnlyIfNeeded = false
+        guard currentBackdrop == nil, let contentView = window.contentView else { return }
 
-        let view = PreferencesView(frame: NSRect(x: 0, y: 0, width: 480, height: 576))
-        view.panel = panel
-        view.hostWindow = window
-        panel.contentView = view
-        currentPanel = panel
+        // Backdrop
+        let backdrop = CommandBackdropView(frame: contentView.bounds)
+        backdrop.autoresizingMask = [.width, .height]
+        backdrop.onClickOutside = { PreferencesView.dismiss() }
+        contentView.addSubview(backdrop)
+        currentBackdrop = backdrop
 
-        window.beginSheet(panel)
+        // Card centered in window
+        let cardW: CGFloat = 480
+        let cardH: CGFloat = 576
+        let cardX = floor((contentView.bounds.width - cardW) / 2)
+        let cardY: CGFloat
+        if contentView.isFlipped {
+            cardY = floor((contentView.bounds.height - cardH) / 2)
+        } else {
+            cardY = floor((contentView.bounds.height - cardH) / 2)
+        }
+
+        let view = PreferencesView(frame: NSRect(x: cardX, y: cardY, width: cardW, height: cardH))
+        view.autoresizingMask = [.minXMargin, .maxXMargin, .minYMargin, .maxYMargin]
+        view.layer?.cornerRadius = Theme.paneRadius
+        view.layer?.masksToBounds = true
+        contentView.addSubview(view)
+        currentCard = view
+
+        // Animate in
+        backdrop.alphaValue = 0
+        view.alphaValue = 0
+        view.wantsLayer = true
+        view.layer?.transform = CATransform3DMakeScale(0.97, 0.97, 1)
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.18
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            backdrop.animator().alphaValue = 1
+            view.animator().alphaValue = 1
+        }
+
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(0.18)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+        view.layer?.transform = CATransform3DIdentity
+        CATransaction.commit()
     }
 
-    // MARK: - Internal refs
+    static func dismiss() {
+        let backdrop = currentBackdrop
+        let card = currentCard
 
-    private weak var panel: NSPanel?
-    private weak var hostWindow: NSWindow?
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = Theme.Anim.fast
+            ctx.timingFunction = Theme.Anim.snappyTimingFunction
+            backdrop?.animator().alphaValue = 0
+            card?.animator().alphaValue = 0
+        }, completionHandler: {
+            backdrop?.removeFromSuperview()
+            card?.removeFromSuperview()
+        })
+
+        CATransaction.begin()
+        CATransaction.setAnimationDuration(Theme.Anim.fast)
+        CATransaction.setAnimationTimingFunction(Theme.Anim.snappyTimingFunction)
+        card?.layer?.transform = CATransform3DMakeScale(0.98, 0.98, 1)
+        CATransaction.commit()
+
+        currentBackdrop = nil
+        currentCard = nil
+    }
 
     // MARK: - Init
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 53 { // Escape
+            PreferencesView.dismiss()
+        } else {
+            super.keyDown(with: event)
+        }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -444,8 +501,7 @@ class PreferencesView: NSView {
     }
 
     @objc private func done(_ sender: Any) {
-        guard let panel = panel, let host = hostWindow else { return }
-        host.endSheet(panel)
+        PreferencesView.dismiss()
     }
 
     // MARK: - Clickable Swatch View

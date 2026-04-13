@@ -38,6 +38,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             paneManager.addPane(type: .claude)
         }
 
+        // Welcome card for first-time users
+        if !Settings.shared.hasSeenWelcome && paneManager.panes.count == 1 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self, let window = self.mainWindow else { return }
+                WelcomeCard.showIfNeeded(in: window)
+            }
+        }
+
         // Mark stale in-progress tasks as interrupted (restore happens in TaskStore.init)
         for task in TaskStore.shared.inProgress {
             TaskStore.shared.markFailed(task, error: "Interrupted by app restart")
@@ -158,6 +166,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func navigateUp(_ sender: Any?)    { paneManager.navigateDirection(.up) }
     @objc func navigateDown(_ sender: Any?)  { paneManager.navigateDirection(.down) }
 
+    @objc func newMarkdownFile(_ sender: Any?) {
+        commandPalette.createMarkdownFile()
+    }
+
+    @objc func openMarkdownFile(_ sender: Any?) {
+        commandPalette.openMarkdownPicker()
+    }
+
     @objc func showCommandPalette(_ sender: Any?) {
         commandPalette.show(in: mainWindow)
     }
@@ -243,6 +259,14 @@ func buildMainMenu(target: AppDelegate) -> NSMenu {
     appMenu.addItem(.separator())
     appMenu.addItem(NSMenuItem(title: "Quit Flock",
         action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+    // -- File menu --
+    let fileItem = NSMenuItem(); main.addItem(fileItem)
+    let fileMenu = NSMenu(title: "File"); fileItem.submenu = fileMenu
+    addItem(fileMenu, "New Markdown File", #selector(AppDelegate.newMarkdownFile(_:)),
+            key: "n", target: target)
+    addItem(fileMenu, "Open Markdown File\u{2026}", #selector(AppDelegate.openMarkdownFile(_:)),
+            key: "o", target: target)
 
     // -- Edit menu --
     let editItem = NSMenuItem(); main.addItem(editItem)

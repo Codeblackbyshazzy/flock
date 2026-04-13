@@ -28,6 +28,7 @@ class Settings {
         case autoCheckUpdates
         case lastRunVersion
         case wrenCompressionEnabled
+        case hasSeenWelcome
     }
 
     var themeId: String {
@@ -138,6 +139,11 @@ class Settings {
     var wrenCompressionEnabled: Bool {
         get { defaults.bool(forKey: Key.wrenCompressionEnabled.rawValue) }
         set { defaults.set(newValue, forKey: Key.wrenCompressionEnabled.rawValue); post(.wrenCompressionEnabled) }
+    }
+
+    var hasSeenWelcome: Bool {
+        get { defaults.bool(forKey: Key.hasSeenWelcome.rawValue) }
+        set { defaults.set(newValue, forKey: Key.hasSeenWelcome.rawValue) }
     }
 
     // ANSI color overrides per theme

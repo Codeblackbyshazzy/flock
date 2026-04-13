@@ -371,7 +371,8 @@ private class MemoryListView: NSView {
                 .font: NSFont.systemFont(ofSize: 13, weight: .regular),
                 .foregroundColor: Theme.textTertiary,
             ]
-            let str = NSAttributedString(string: "No memories yet", attributes: emptyAttrs)
+            let hint = "Pin a thought, paste, or task summary so Claude\ncan pick it up later. \u{2318}\u{21E7}M to add."
+            let str = NSAttributedString(string: hint, attributes: emptyAttrs)
             let sz = str.size()
             str.draw(at: NSPoint(x: (w - sz.width) / 2, y: 40))
             return
@@ -386,7 +387,7 @@ private class MemoryListView: NSView {
 
             // Hover background
             if i == hoveredIndex {
-                Theme.hover.withAlphaComponent(0.5).setFill()
+                Theme.accentSubtle.setFill()
                 NSBezierPath(roundedRect: rowRect.insetBy(dx: 4, dy: 2), xRadius: 6, yRadius: 6).fill()
             }
 
